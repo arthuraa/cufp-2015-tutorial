@@ -235,11 +235,13 @@ Qed.
    annihilator O and associative, commutative and distributive properties. *)
 
 Fixpoint minus (m n : nat) : nat := 
-  match m, n with 
-  | _, O => m
-  | O, _ => O
-  | S m', S n' => minus m' n'
+  match m, n with
+    | O, _ => m
+    | _, O => m
+    | S m', S n' => minus m' n'
   end.
+
+Notation "x - y" := (minus x y) (at level 50, left associativity).
 
 Fixpoint ble_nat (m n : nat) : bool :=
   match m, n with
@@ -248,11 +250,32 @@ Fixpoint ble_nat (m n : nat) : bool :=
   | S n', S m' => ble_nat n' m'
   end.  
 
-Fixpoint div (m n: nat) : nat :=
-  O (* To fill in *).
+Fixpoint div2 (n : nat) :=
+  match n with
+  | O => O
+  | S O => O
+  | S (S n') => S (div2 n')
+  end.
 
-Fixpoint log (m n: nat) : nat :=
-  O (* To fill in *).
+Fail Fixpoint div (m n: nat) {struct m} : nat :=
+  match n with 
+  | O => O
+  | S n' => if ble_nat n m then S (div (m - n) n) else O
+  end.
+
+(* This, on the other hand, words: *)
+
+Fixpoint div (m n: nat) {struct m} : nat :=
+  match n with
+    | O => O
+    | S n' => match m with
+                | O => O
+                | S m' => S (div (S m' - S n') (S n'))
+              end
+  end.
+
+(* However, changing the definition of minus to equivalent ones causes
+   it to break (try it!) *)
 
 End Nat.  
 
