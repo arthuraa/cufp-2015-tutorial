@@ -420,7 +420,8 @@ Definition push {T} (x:T) (s : stack T) : stack T  := x :: s.
 Definition pop {T} (s : stack T) : T * stack T :=
   match s with
   | h :: t => (h, t)
-  |  
+  | _ => ???
+  end.
   
 
 
