@@ -1,5 +1,5 @@
 (* ###################################################################### *)
-(** Syntax *)
+(** * Syntax *)
 
 (** Everything in Coq is built from scratch -- even booleans!
     Fortunately, they are already provided by the Coq standard
@@ -13,8 +13,8 @@
 Module Bool.
 
 Inductive bool : Type :=
-  | true : bool
-  | false : bool.
+| true : bool
+| false : bool.
 
 (** Exercise: Define a three-valued datatype, representing ternary logic.
     Here something can be true, false and unknown. *)
@@ -189,55 +189,71 @@ Proof.
 
 End Bool.
 
-
-(* Even numbers are not primitive!
-   Let's define them inductively.   *)
-
 Module Nat.
 
-(* A natural number is either zero or the successor of a natural number *)
+(* ###################################################################### *)
+(** * Numbers and induction
 
-(* Note that bool was a simple enumeration type, where this type has a
-   recursive structure. *)
+    Even numbers are not primitive! Luckily, inductive types are all
+    we need to define them. Once again, Coq's standard library comes
+    witg its own numeric types, but we repeat the definition of
+    natural number here for illustration purposes.
+
+    Recall that a natural number is either zero or the successor of a
+    natural number. This leads to the following definition: *)
 
 Inductive nat : Type :=
-  | O : nat
-  | S : nat -> nat.
+| O : nat
+| S : nat -> nat.
 
-(* "Check" [C-c C-a C-c in Proof General, or ... in CoqIDE] allows us
-   to check the type of an expression. *)
+(** Note that [bool] was a simple enumeration type with finitely many
+    elements, whereas this type has a recursive structure. This
+    definition says that [nat] is an algebraic data type with two
+    constructors, [O] and [S], the second of which has one argument of
+    type [nat].
+
+    We can use [Check] ([C-c C-a C-c] in Proof General) to ask Coq for
+    the type of an expression. *)
 
 Check (S (S O)).
 
-(* The "Fixpoint" keyword defines a recursive function *)
-(* In OCaml we would use "let rec" and in Haskell no special keyword is needed. *)
+(** This expression represents the successor of the successor of zero (i.e., two).
+
+    We can define recursive functions with the [Fixpoint] keyword,
+    which corresponds to [let rec] declarations in OCaml. (Other
+    languages, such as Haskell, do not require special keywords to
+    introduce recursive definitions.) Here's how we can define
+    addition and multiplication for [nat]s. *)
 
 Fixpoint plus (n m : nat) : nat :=
   match n with
-    | O => m
-    | S n' => S (plus n' m)
+  | O => m
+  | S n' => S (plus n' m)
   end.
 
 Fixpoint mult (n m : nat) : nat :=
   match n with
-    | O => O
-    | S n' => plus m (mult n' m)
+  | O => O
+  | S n' => plus m (mult n' m)
   end.
 
-(* Let's add some notation *)
+(** Coq comes with a syntax extension mechanism for defining custom
+    notations. Without getting into details, here's how we can give
+    familiar syntax for the two functions above. *)
 
 Notation "x + y" := (plus x y) (at level 50, left associativity).
 
 Notation "x * y" := (mult x y) (at level 40, left associativity).
 
 
-(* Exercise: Define exponentiation *)
+(** Exercise: Define exponentiation *)
 
 (* Fill in function here *)
 
 (* Fill in notation here *)
 
-(* Let's show that O is the left additive identity . *)
+(** It is easy to show that [O] is the left additive identity, because
+    it follows directly from simplification: *)
 
 Lemma plus_0_l: forall n : nat, O + n = n.
 Proof.
@@ -246,22 +262,33 @@ Proof.
   reflexivity.
 Qed.
 
-(* Showing that 0 is the right additive identity is more difficult *)
-
-(* Tactics: Induction - destructs an inductive term, giving us an inductive
-   hypothesis in the inductive case. *)
+(** Showing that [O] is the right additive identity is more difficult,
+    since it doesn't follow by simplification alone. *)
 
 Lemma plus_O_r: forall n : nat, n + O = n.
 Proof.
   intros n.
-  simpl. (* does nothing *)
-  destruct n as [| n'].
+  simpl. (* Does nothing *)
+  destruct n as [| n']. (* Notice the [as] clause, which allows us
+                           to name constructor arguments. *)
   + simpl.
     reflexivity.
-  + simpl. (* no way to proceed *)
+  + simpl. (* no way to proceed... *)
+
+(** The problem is that we can only prove the result for [S n'] if we
+    already know that it is valid for [n']. We need a bigger hammer here...
+
+
+    New tactic
+    ----------
+
+    - [induction]: Argue by induction. It works as [destruct], but
+    additionally giving us an inductive hypothesis in the inductive
+    case. *)
+
 Restart.
   intros n.
-  induction n as [| n' IH]. (* Note the additional name IH, given to our
+  induction n as [| n' IH]. (* Note the additional name [IH], given to our
                                inductive hypothesis *)
   + simpl.
     reflexivity.
@@ -270,14 +297,15 @@ Restart.
     reflexivity.
 Qed.
 
-(* Exercise: Show that n + S m is equal to S (n + m). *)
-
-(* Let's show that plus is associative. *)
+(** As a rule of thumb, when proving some property of a recursive
+    function, it is a good idea to do induction on the recursive
+    argument of the function. For instance, let's show that [plus] is
+    associative: *)
 
 Theorem plus_assoc: forall m n o, m + (n + o) = (m + n) + o.
 Proof.
   intros m n o.
-  induction m as [| m' IH]. (* m is the right choice here, since plus is defined
+  induction m as [| m' IH]. (* m is the right choice here, since [plus] is defined
                                by recursion on the first argument. *)
   + simpl.
     reflexivity.
@@ -286,9 +314,13 @@ Proof.
     reflexivity.
 Qed.
 
-(* Exercise: Show that plus is commutative. *)
-(* Hint: Look at our earlier lemmas. *)
+(** Take-home exericse: Try to do induction on [n] and [o] in the
+    above proof, and see where it fails. *)
 
+(** Exercise: Show that [n + S m] is equal to [S (n + m)]. *)
+
+(** Exercise: Show that plus is commutative. *)
+(** Hint: Look at our earlier lemmas. *)
 
 (* Additional take-home exercises: Show that mult has an identity (S O), a
    annihilator O and associative, commutative and distributive properties. *)
