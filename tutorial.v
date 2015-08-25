@@ -46,6 +46,7 @@ Definition andb (b1 b2: bool) : bool :=
   | false => false
   end.
 
+
 (** Let's test our functions. The [Compute] command tells Coq to
     evaluate an expression and print the result on the screen.*)
 
