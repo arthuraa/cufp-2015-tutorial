@@ -407,13 +407,13 @@ Fixpoint div (m n: nat) : nat :=
     fragile: replacing [m] by [O] or [S m'] in the above definition of
     [minus] causes this definition of [div] to break; try it!.
 
-    This kind of rewriting doesn't work. We can make Coq accept less
-    obvious recursive definitions by providing an explicit, separate
-    proof that they always terminate, or by supplying an extra
-    argument that gives an upper bound on how many recursive calls can
-    be performed. We won't cover this feature in this tutorial, but
-    you can find more about recursive definitions in Coq on the
-    Internet. *)
+    This kind of rewriting doesn't always work, alas. We can make Coq
+    accept less obvious recursive definitions by providing an
+    explicit, separate proof that they always terminate, or by
+    supplying an extra argument that gives an upper bound on how many
+    recursive calls can be performed. We won't cover this feature in
+    this tutorial, but you can find more about recursive definitions
+    in Coq on the Internet. *)
 
 End Nat.
 
@@ -427,21 +427,32 @@ End Nat.
 Compute (S (S O)).
 Compute (S (S O) + S O).
 
+(* ###################################################################### *)
+(** * Lists
+
+    We will now shift gears and study more interesting functional
+    programs; namely, programs that manipulate _lists_. *)
+
 Module List.
 
-(* Here's a polymorphic definition: *)
+(** Here's a polymorphic definition of a [list] type in Coq: *)
 
 Inductive list (T : Type) :=
 | nil : list T
 | cons : T -> list T -> list T.
 
-(* In Coq, polymorphism is _explicit_, i.e. we need to supply type arguments. *)
+(** In Coq, polymorphism is _explicit_, which means that we need to
+    supply type arguments when using polymorphic functions. *)
 
 Definition singleton_list (T : Type) (x : T) :=
   cons T x (nil T).
 
-(* However, we can avoid giving arguments when Coq has enough
-   information to figure them out *)
+(** Fortunately, we can avoid providing arguments when Coq has enough
+    information to figure them out. In the example below, since [x]
+    has type [T], Coq can infer that the type argument for [cons] and
+    [nil] must be [T] too. Hence, we can just write a wildcard "_"
+    instead of [T], which has the effect of asking Coq to figure out
+    what to put there on its own: *)
 
 Definition singleton_list' (T : Type) (x : T) :=
   cons _ x (nil _).
@@ -460,6 +471,17 @@ Definition singleton_list'' {T} (x : T) :=
 
 Check (singleton_list'' 3).
 
+(** Finally, we can turn off implicit argument inference for a
+    definition locally, by prepending its name with a "@" sign: *)
+
+Check (@singleton_list'' nat).
+
+(** In Coq, polymorphism appears on the type of programs as a
+    universal quantifier [forall]: *)
+
+Check @singleton_list''.
+Check @nil.
+
 Notation "h :: t" := (cons h t) (at level 60, right associativity).
 Notation "[ ]" := (nil).
 Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..).
@@ -477,8 +499,11 @@ Fixpoint app {T} (l1 l2 : list T) : list T :=
 
 Notation "l1 ++ l2" := (app l1 l2) (at level 60, right associativity).
 
-(* Calling "induction" on a list gives an inductive hypothesis about
-   the tail of the list. *)
+(** Let us prove some simple facts about lists. To perform an
+    inductive proof on a list, we also use the [induction] tactic;
+    this has the effect of giving us an inductive hypothesis about the
+    tail of the list. Notice that in the proof below we have to give
+    names both to the head and to the tail of [l1] *)
 
 Lemma app_assoc :
   forall T (l1 l2 l3 : list T),
@@ -506,15 +531,15 @@ Admitted.
 
 End List.
 
-(* Lists, of course, are also defined in the standard library *)
+(** Lists, of course, are also defined in the standard library. *)
 
 Require Import Coq.Lists.List.
 Import ListNotations.
 
-(* Notice that the definition of rev (list reversal) given in the
-standard library runs in quadratic time. *)
+(** Notice that the definition of rev (list reversal) given in the
+    standard library runs in quadratic time. *)
 
-Print rev.
+Print rev. (* [C-c C-a C-p] in Proof General *)
 
 (* This is a tail-recursive equivalent that runs in linear time *)
 
@@ -568,7 +593,7 @@ Restart.
   - intros l2. (* Behold our induction hypothesis! *)
     simpl.
     rewrite IH.
-    SearchAbout (_ ++ _ ++ _). (* C-c C-a C-a in Proof General *)
+    SearchAbout (_ ++ _ ++ _). (* [C-c C-a C-a] in Proof General *)
     rewrite <- app_assoc.
     simpl.
     reflexivity.
