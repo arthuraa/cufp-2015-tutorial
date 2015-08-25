@@ -16,8 +16,8 @@ Inductive bool : Type :=
   | true : bool
   | false : bool.
 
-(* Exercise: Define a three-valued datatype, representing ternary logic.
-   Here something can be true, false and unknown. *)
+(** Exercise: Define a three-valued datatype, representing ternary logic.
+    Here something can be true, false and unknown. *)
 
 Inductive trivalue : Type :=
   (* Fill in here *).
@@ -53,22 +53,32 @@ Compute (negb true).
 Compute (orb true false).
 Compute (andb true false).
 
-(* Exercise: Define xor (exclusive or) . *)
+(** Exercise: Define xor (exclusive or) . *)
 
 Definition xorb (b1 b2 : bool) : bool :=
   true (* Change this! *).
 
 (** What makes Coq different from normal functional programming
     languages is that it allows us to formally _prove_ that our
-    programs satisfy certain properties, verifying these proofs to
-    ensure that they are correct.
+    programs satisfy certain properties. The system mechanically
+    verifies these proofs to ensure that they are correct.
 
     We use [Lemma], [Theorem] and [Example] to write logical
     statements. Coq requires us to prove these statements using
     _tactics_, which are commands that manipulate formulas using basic
-    logic rules. Here's an example: *)
+    logic rules. Here's an example showing some basic tactics in
+    action.
 
-(* Basic tactics: intros, simpl and reflexivity. *)
+
+    New tactics
+    -----------
+
+    - [intros]: Introduce variables into the context, giving them
+      names.
+
+    - [simpl]: Simplify the goal.
+
+    - [reflexivity]: Prove that some expression [x] is equal to itself. *)
 
 Example andb_false : forall b, andb false b = false.
 Proof.
@@ -77,7 +87,19 @@ Proof.
   reflexivity. (* solve for x = x *)
 Qed.
 
-(* Basic tactics: We can use 'destruct' to do case analysis *)
+(** Some proofs require case analysis. In Coq, this is done with the
+    [destruct] tactic.
+
+
+    New tactics
+    -----------
+
+    - [destruct]: Consider all possible constructors of an inductive
+      data type, generating subgoals that need to be solved
+      separately.
+
+
+    Here's an example of [destruct] in action. *)
 
 Lemma double_negation : forall b : bool, negb (negb b) = b.
 (* Here we explicitly annotate b with its type, even though Coq could infer it. *)
@@ -93,6 +115,8 @@ Proof.
     reflexivity.
 Qed.
 
+(** We can call [destruct] as many times as we want, generating deeper subgoals. *)
+
 Theorem andb_commutative : forall b1 b2 : bool, andb b1 b2 = andb b2 b1.
 Proof.
   intros b1 b2.
@@ -106,32 +130,60 @@ Proof.
 Qed.
 
 
-(* Exercise: Show that false is an identity element for xor - that is,
-   xor false b is equal to b *)
+(** Exercise: Show that false is an identity element for xor -- that
+    is, [xor false b] is equal to [b] *)
 
-Theorem xorb_false: False. (* fill in claim *)
+Theorem xorb_false : False. (* Replace [False] with claim. *)
 Proof.
-  Admitted. (* fill in proof *)
+Admitted. (* fill in proof *)
 
-(* NB: Admitted allows us to proceed without completing our proof. *)
+(** NB: Admitted allows us to proceed without completing our proof.
 
-(* Basic tactics : rewriting, apply *)
-
+    Sometimes, we want to show a result that requires hypotheses. In
+    Coq, [P -> Q] means that [P] implies [Q], or that [Q] is true
+    whenever [P] is. We can use [->] multiple times to express that
+    more than one hypothesis are needed; the syntax is similar to how
+    we write multiple-argument functions in OCaml or Haskell. For
+    example: *)
 
 Theorem rewrite_example : forall b1 b2 b3 b4,
   b1 = b4 ->
   b2 = b3 ->
   andb b1 b2 = andb b3 b4.
+
+(** We can use the [intros] tactic to give hypotheses names, bringing
+    them into the proof context. *)
+
 Proof.
   intros b1 b2 b3 b4 eq14 eq23.
+
+(** Now, our context has two hypotheses: [eq14], which states that [b1
+    = b4], and [eq23], stating that [b2 = b3].
+
+    Here are some tactics for using hypotheses and previously proved
+    results:
+
+
+    New tactics
+    -----------
+
+    - [rewrite]: Replace one side of an equation by the other.
+
+    - [apply]: Suppose that the current goal is [Q]. If [H : Q], then
+      [apply H] solves the goal. If [H : P -> Q], then [apply H]
+      replaces [Q] by [P] in the goal. If [H] has multiple hypotheses,
+      [H : P1 -> P2 -> ... -> Pn -> Q], then [apply H] generates one
+      subgoal for each [Pi]. *)
+
   rewrite eq14. (* replace b1 with b4 in the goal *)
   rewrite <- eq23. (* replace b3 with b2 in the goal. *)
   apply andb_commutative. (* solve using our earlier theorem *)
 Qed.
 
-(* Exercise: Show that if b1=b2 then xorb b1 b2 is equal to false *)
+(** Exercise: Show that if [b1 = b2] then [xorb b1 b2] is equal to
+    [false] *)
 
-Theorem xorb_same : False. (* fill in claim *)
+Theorem xorb_same : False. (* Replace [False] by claim *)
 Proof.
   Admitted. (* fill in proof *)
 
