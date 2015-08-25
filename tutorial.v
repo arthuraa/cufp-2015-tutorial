@@ -322,17 +322,44 @@ Qed.
 (** Exercise: Show that plus is commutative. *)
 (** Hint: Look at our earlier lemmas. *)
 
-(* Additional take-home exercises: Show that mult has an identity (S O), a
-   annihilator O and associative, commutative and distributive properties. *)
+(** Additional take-home exercises: Show that mult has an identity [S
+    O], a annihilator [O] and associative, commutative and
+    distributive properties. *)
+
+(** Coq, like many other proof assistants, requires functions to be
+    _total_ and defined for all possible inputs; in particular,
+    recursive functions are always required to terminate.
+
+    Since there is no general algorithm for deciding whether a
+    function is terminating or not, Coq needs to settle for an
+    incomplete class of recursive functions that is easy to show
+    terminating. This means that, although every recursive function
+    accepted by Coq is terminating, there are many recursive functions
+    that always terminate but are not accepted by Coq, because it
+    isn't "smart enough" to realize that they indeed terminate.
+
+    The criterion adopted by Coq for deciding whether to accept a
+    definition or not is _structural recursion_: All recursive calls
+    must be performed on _sub-terms_ of the original argument. The
+    definition of [plus] above is valid because the only recursive
+    call to [plus] is performed on [n'], which is an argument of [S n'
+    = n], hence a sub-term.
+
+    To understand what this restriction means in practice, let's see
+    how we can define a division operation in Coq. We begin by
+    defining subtraction: *)
 
 Fixpoint minus (m n : nat) : nat :=
   match m, n with
-    | O, _ => m
-    | _, O => m
-    | S m', S n' => minus m' n'
+  | O, _ => m
+  | _, O => m
+  | S m', S n' => minus m' n'
   end.
 
 Notation "x - y" := (minus x y) (at level 50, left associativity).
+
+(** The next function tests whether a number [m] is less than or equal
+    to [n]. *)
 
 Fixpoint ble_nat (m n : nat) : bool :=
   match m, n with
@@ -341,38 +368,61 @@ Fixpoint ble_nat (m n : nat) : bool :=
   | S n', S m' => ble_nat n' m'
   end.
 
-Fixpoint div2 (n : nat) :=
-  match n with
-  | O => O
-  | S O => O
-  | S (S n') => S (div2 n')
-  end.
+(** We could try to define division using [minus] and [ble_nat] as in
+    the definition below. Unfortunately, Coq doesn't accept this
+    definition because it cannot figure out that [m - n] is smaller
+    than [m] when [n] is different from [O] and [ble_nat n m = true]. *)
 
-Fail Fixpoint div (m n: nat) {struct m} : nat :=
+Fail Fixpoint div (m n: nat) : nat :=
   match n with
   | O => O
   | S n' => if ble_nat n m then S (div (m - n) n) else O
   end.
 
-(* This, on the other hand, words: *)
+(** Notice that we've used the [if .. then .. else] syntax for
+    pattern-matching on the result of [ble_nat n m], a boolean. It is
+    just syntatic sugar for the equivalent [match] expression with
+    explicit branches.
 
-Fixpoint div (m n: nat) {struct m} : nat :=
+    The [Fail] keyword instructs Coq to ignore a command when it
+    fails, but to fail if the command succeeds. It is useful for
+    showing certain pieces of code that are not accepted by the
+    language.
+
+    In this case, we can rewrite [div] so that it is accepted by Coq's
+    termination checker: *)
+
+Fixpoint div (m n: nat) : nat :=
   match n with
-    | O => O
-    | S n' => match m with
-                | O => O
-                | S m' => S (div (S m' - S n') (S n'))
-              end
+  | O => O
+  | S n' => match m with
+            | O => O
+            | S m' => S (div (S m' - S n') (S n'))
+            end
   end.
 
-(* However, changing the definition of minus to equivalent ones causes
-   it to break (try it!) *)
+(** Here, Coq is able to figure out that [S m' - S n'] is a valid
+    recursive argument because [minus] only returns results that are
+    syntatic sub-terms of [m]. Unfortunately, this criterion is pretty
+    fragile: replacing [m] by [O] or [S m'] in the above definition of
+    [minus] causes this definition of [div] to break; try it!.
+
+    This kind of rewriting doesn't work. We can make Coq accept less
+    obvious recursive definitions by providing an explicit, separate
+    proof that they always terminate, or by supplying an extra
+    argument that gives an upper bound on how many recursive calls can
+    be performed. We won't cover this feature in this tutorial, but
+    you can find more about recursive definitions in Coq on the
+    Internet. *)
 
 End Nat.
 
 
-(* Nat is defined in Coq's standard libraries which treats 3 as syntactic sugar
-   for S (S (S O)). *)
+(** As mentioned previously, [nat] is already defined in Coq's
+    standard library. Coq provides special, arabic-numeral syntax for
+    [nat], which is translated in terms of the [O] and [S]
+    constructors. For instance, [3] is just special syntax for [S (S
+    (S O))]. Similarly: *)
 
 Compute (S (S O)).
 Compute (S (S O) + S O).
