@@ -40,11 +40,10 @@ Definition orb (b1 b2: bool) : bool :=
   | _, _ => true
   end.
 
-Definition andb (b1 b2: bool) : bool :=
-  match b1 with
-  | true => b2
-  | false => false
-  end.
+(** We can also use an If statement, which matches on the first constructor of
+    any two-constructor datatype, in our definition. *)
+
+Definition andb (b1 b2: bool) : bool := if b1 then b2 else false.
 
 (** Let's test our functions. The [Compute] command tells Coq to
     evaluate an expression and print the result on the screen.*)
@@ -379,12 +378,7 @@ Fail Fixpoint div (m n: nat) : nat :=
   | S n' => if ble_nat n m then S (div (m - n) n) else O
   end.
 
-(** Notice that we've used the [if .. then .. else] syntax for
-    pattern-matching on the result of [ble_nat n m], a boolean. It is
-    just syntatic sugar for the equivalent [match] expression with
-    explicit branches.
-
-    The [Fail] keyword instructs Coq to ignore a command when it
+(** The [Fail] keyword instructs Coq to ignore a command when it
     fails, but to fail if the command succeeds. It is useful for
     showing certain pieces of code that are not accepted by the
     language.
@@ -414,6 +408,89 @@ Fixpoint div (m n: nat) : nat :=
     recursive calls can be performed. We won't cover this feature in
     this tutorial, but you can find more about recursive definitions
     in Coq on the Internet. *)
+
+
+(** The next function tests whether a number [m] is equal to [n]. *)
+
+Fixpoint beq_nat (m n : nat) : bool :=
+  match m, n with
+  | O, O => true
+  | S m', S n' => beq_nat m' n'
+  | _, _ => false
+  end.
+
+(** You may wonder why we bother defining [beq_nat] when we already
+    have an equality operator [=]. This is due to an important
+    distinction between propositions [Prop] and [bool] in Coq. As we
+    just showed, functions in Coq are total and terminating; in
+    particular, every function in Coq that returns a [bool]
+    corresponds to an algorithm that returns [true] or [false] at the
+    end. In contrast, we can use [Prop] to express _arbitrary_
+    propositions, even ones that cannot be decided by an algorithm
+    (e.g., this Turing machine halts on all inputs). Since [Prop]s do
+    not correspond to terminating computations, we cannot use them to
+    define functions, like this one: *)
+
+Definition max (m n : nat) : nat :=
+  if ble_nat m n then n else m.
+
+(** Nevertheless, we can still relate our previous equality operator
+    [=] to this computational notion of equality we just defined.
+
+    New tactic
+    ----------
+   
+    - [clear]: Remove hypotheses from the context (needed here to
+      simplify our IH). *)
+
+Lemma beq_nat_eq :
+  forall m n, m = n -> beq_nat m n = true.
+Proof.
+  intros m n e. rewrite e. clear m e.
+  induction n as [|n IH].
+  - reflexivity.
+  - simpl. apply IH.
+Qed.
+
+(** The other direction requires us to reason about _contradictory_
+    hypotheses. Whenever we have a hypothesis that equates two
+    expressions that start with different constructors, we can use the
+    [inversion] tactic to prune that subgoal.
+
+    New tactics
+    -----------
+   
+    - [inversion]: If hypothesis [H] states that [e1 = e2], where [e1]
+      and [e2] are expressions that start with different
+      constructors, than [inversion H] completes the current subgoal.
+
+*)
+
+Lemma eq_beq_nat :
+  forall m n, beq_nat m n = true -> m = n.
+Proof.
+  intros m.
+  induction m as [|m IH].
+  - intros k. destruct k as [|].
+    + reflexivity.
+    + simpl. intros H. inversion H.
+  - intros k. destruct k as [|k].
+    + simpl. intros H. inversion H.
+    + simpl. intros H. rewrite (IH k).
+      * reflexivity.
+      * apply H.
+Qed.
+
+(** (Notice that we rewrote using [IH] we specified which value of [n]
+    to use (in this case, [k]) by writing [IH k].) *)
+
+(** Exercise: Prove this statement. *)
+
+Lemma plus_eq_0 :
+  forall n m,
+    n + m = O -> n = O.
+Proof. (* Fill in here *) Admitted.
+
 
 End Nat.
 
@@ -606,11 +683,12 @@ Definition stack := list.
 
 Definition push {T} (x:T) (s : stack T) : stack T  := x :: s.
 
-Definition pop {T} (s : stack T) : T * stack T :=
+Fail Definition pop {T} (s : stack T) : T * stack T :=
   match s with
   | h :: t => (h, t)
-  | _ => ???
+  (* What do we do for an empty stack? *)
   end.
+
 
 
 
