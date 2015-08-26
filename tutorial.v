@@ -689,12 +689,54 @@ Fail Definition pop {T} (s : stack T) : T * stack T :=
   (* What do we do for an empty stack? *)
   end.
 
+(** Traditional approach: Use an [Option] type. *)
 
+Definition pop {T} (s : stack T) : option T * stack T :=
+  match s with
+  | nil => (None, s)
+  | h :: t => (Some h, t)
+  end.
 
+(* We can avoid having to use (and check) option types by defining a
+   size-indexed stack. *)
 
+Inductive istack (T : Type) : nat -> Type :=
+  | empty : istack T O
+  | add :  forall n, T -> istack T n -> istack T (S n).
 
+Arguments empty {T}.
+Arguments add {T} {n} _ _.
 
+Definition ipush {T} {n:nat} (x:T) (s : istack T n) : istack T (S n) := add x s.
 
+Check add.
+
+Definition ipop {T} {n} (s : istack T (S n)) : T * istack T n :=
+  match s with
+  | add _ top bottom => (top, bottom)
+  end.
+
+Fixpoint combine {T} {n1} {n2} (s1 : istack T n1) (s2 : istack T n2) :
+  istack T (n1 + n2) :=
+    match s1 in (istack _ n1) return (istack _ (n1 + n2)) with
+    | empty => s2
+    | add  _ x s1' => add x (combine s1' s2)
+    end.
+
+(* Not sure why Coq allows (modified) Adam Chlipala's version through but not
+   mine...
+
+Fixpoint combine {T} {m:nat} {n:nat} (s1 : istack T m) (s2: istack T n)
+: istack T (m + n) :=
+  match m with
+  | O => s2
+  | S m' => match s1 with
+              | add _ h s1' => add h (combine s1' s2)
+              end
+  end.
+
+*)  
+                                          
 Rewriting
 
 Lists (Polymorphism)
