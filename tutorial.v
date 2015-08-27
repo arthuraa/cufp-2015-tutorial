@@ -6,7 +6,7 @@
     library, but we'll review their definition here to get familiar
     with the basic features of the system.
 
-    "Inductive" is Coq's way of defining an algebraic datatype.  Its
+    [Inductive] is Coq's way of defining an algebraic datatype.  Its
     syntax is similar to OCaml's ([type]) or Haskell's ([data]). Here,
     we define [bool] as a simple algebraic datatype. *)
 
@@ -16,8 +16,8 @@ Inductive bool : Type :=
 | true : bool
 | false : bool.
 
-(** Exercise: Define a three-valued datatype, representing ternary logic.
-    Here something can be true, false and unknown. *)
+(** Exercise: Define a three-valued data type, representing ternary
+    logic.  Here something can be true, false and unknown. *)
 
 Inductive trivalue : Type :=
   (* Fill in here *).
