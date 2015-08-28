@@ -439,7 +439,7 @@ Definition max (m n : nat) : nat :=
 
     New tactic
     ----------
-   
+
     - [clear]: Remove hypotheses from the context (needed here to
       simplify our IH). *)
 
@@ -459,7 +459,7 @@ Qed.
 
     New tactics
     -----------
-   
+
     - [inversion]: If hypothesis [H] states that [e1 = e2], where [e1]
       and [e2] are expressions that start with different
       constructors, than [inversion H] completes the current subgoal.
@@ -676,8 +676,8 @@ Restart.
     reflexivity.
 Qed.
 
-
-(* Dependently Typed Programming *)
+(* ###################################################################### *)
+(** * Dependently Typed Programming *)
 
 Definition stack := list.
 
@@ -689,7 +689,7 @@ Fail Definition pop {T} (s : stack T) : T * stack T :=
   (* What do we do for an empty stack? *)
   end.
 
-(** Traditional approach: Use an [Option] type. *)
+(** Traditional approach: Use an [option] type. *)
 
 Definition pop {T} (s : stack T) : option T * stack T :=
   match s with
@@ -735,8 +735,8 @@ Fixpoint combine {T} {m:nat} {n:nat} (s1 : istack T m) (s2: istack T n)
               end
   end.
 
-*)  
-                                          
+*)
+
 Rewriting
 
 Lists (Polymorphism)
