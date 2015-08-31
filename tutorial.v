@@ -759,25 +759,15 @@ Definition ipop {T} {n} (s : istack T (S n)) : T * istack T n :=
 
 Fixpoint combine {T} {n1} {n2} (s1 : istack T n1) (s2 : istack T n2) :
   istack T (n1 + n2) :=
-    match s1 in (istack _ n1) return (istack _ (n1 + n2)) with
+    match s1 with 
     | empty => s2
-    | add  _ x s1' => add x (combine s1' s2)
+    | add _ x s1' => add x (combine s1' s2)
     end.
 
-(* Not sure why Coq allows (modified) Adam Chlipala's version through but not
-   mine...
-
-Fixpoint combine {T} {m:nat} {n:nat} (s1 : istack T m) (s2: istack T n)
-: istack T (m + n) :=
-  match m with
-  | O => s2
-  | S m' => match s1 with
-              | add _ h s1' => add h (combine s1' s2)
-              end
-  end.
-
-*)
-
+(* Exercise: Write a snoc function to add an element to the bottom of 
+   an indexed stack. Do not use the combine function (in this case, it will make 
+   life difficult.) *)
+  
 Rewriting
 
 Lists (Polymorphism)
