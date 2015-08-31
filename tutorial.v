@@ -677,6 +677,47 @@ Restart.
 Qed.
 
 (* ###################################################################### *)
+(** * Case study: Red-Black Trees *)
+
+Open Scope bool_scope.
+
+Section RedBlack.
+
+Variable A : Type.
+Variable comp : A -> A -> bool.
+
+Inductive color := Red | Black.
+
+Inductive tree :=
+| Leaf : tree
+| Node : color -> tree -> A -> tree -> tree.
+
+Definition tree_color (t : tree) : color :=
+  match t with
+  | Leaf => Black
+  | Node c _ _ _ => c
+  end.
+
+Fixpoint is_red_black (t : tree) : bool :=
+  match t with
+  | Leaf => true
+  | Node Black t1 _ t2 => is_red_black t1 && is_red_black t2
+  | Node Red t1 _ t2 =>
+    match tree_color t1, tree_color t2 with
+    | Black, Black => is_red_black t1 && is_red_black t2
+    | _, _ => false
+    end
+  end.
+
+Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
+  match t with
+  | Leaf => 0
+  | Node _ t1 _ t2 => S (f (size f t1) (size f t2))
+  end.
+
+End RedBlack.
+
+(* ###################################################################### *)
 (** * Dependently Typed Programming *)
 
 Definition stack := list.
