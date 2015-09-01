@@ -795,22 +795,34 @@ Qed.
 Lemma size_max_size_min :
   forall t,
     is_red_black t = true ->
-    t <=
-
-Lemma size_min_size_max :
-  forall t : tree,
-    is_red_black t = true ->
     size max t <= 2 * size min t + 1.
 Proof.
+  intros t H.
+  unfold is_red_black in *.
+  assert (Hmax := size_max_black_height t).
+  assert (Hmin := size_min_black_height t).
+  destruct (is_red_black_aux t) as [h|].
+  + assert (Hmax' : size max t <= 2 * h + 1).
+    { destruct (tree_color t); lia. }
+    lia.
+  + inversion H.
+Qed.
+
+Lemma size_min_size_plus :
+  forall t,
+    2 ^ size min t <= size plus t + 1.
+Proof.
   intros t.
-  induction t as [|[] t1 IH1 x t2 IH2].
-  + simpl. lia.
-  + simpl. intros H.
-    destruct (tree_color t1), (tree_color t2); try now inversion H.
-    rewrite Bool.andb_true_iff in H.
-    destruct H as [H1 H2].
-    apply IH1 in H1.
-    apply IH2 in H2.
+  induction t as [|c t1 IH1 x t2 IH2]; simpl.
+  - lia.
+  - assert (H1 : 2 ^ min (size min t1) (size min t2)
+                 <= 2 ^ size min t1).
+    { apply Nat.pow_le_mono_r; lia. }
+    assert (H2 : 2 ^ min (size min t1) (size min t2)
+                 <= 2 ^ size min t2).
+    { apply Nat.pow_le_mono_r; lia. }
+    lia.
+Qed.
 
 End RedBlack.
 
