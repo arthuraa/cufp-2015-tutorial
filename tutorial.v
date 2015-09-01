@@ -747,7 +747,7 @@ Lemma size_min_black_height :
 Proof.
   intros t.
   induction t as [|c t1 IH1 x t2 IH2].
-  + simpl. lia.
+  + simpl. lia. (* Talk about lia? *)
   + simpl.
     destruct (is_red_black_aux t1) as [h1|]; trivial. (* Talk about semicolons? *)
     destruct (is_red_black_aux t2) as [h2|]; trivial.
@@ -823,6 +823,81 @@ Proof.
     { apply Nat.pow_le_mono_r; lia. }
     lia.
 Qed.
+
+Fixpoint member x t : bool :=
+  match t with
+  | Leaf => false
+  | Node _ t1 x' t2 =>
+    if comp x x' then
+      comp x' x || member x t1
+    else member x t2
+  end.
+
+Definition balance c t1 x t2 : tree :=
+  match c, t1, x, t2 with
+  | Black, Node Red (Node Red t1 x1 t2) x2 t3, x3, t4
+  | Black, Node Red t1 x1 (Node Red t2 x2 t3), x3, t4
+  | Black, t1, x1, Node Red (Node Red t2 x2 t3) x3 t4
+  | Black, t1, x1, Node Red t2 x2 (Node Red t3 x3 t4)
+    => Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)
+  | _, _, _, _ => Node c t1 x t2
+  end.
+
+Fixpoint insert_aux x t : tree :=
+  match t with
+  | Leaf => Node Red Leaf x Leaf
+  | Node c t1 x' t2 =>
+    if comp x x' then
+      if comp x' x then t (* Element was already present *)
+      else balance c (insert_aux x t1) x' t2
+    else balance c t1 x' (insert_aux x t2)
+  end.
+
+Definition make_black t : tree :=
+  match t with
+  | Leaf => Leaf
+  | Node _ t1 x t2 => Node Black t1 x t2
+  end.
+
+Definition insert x t : tree :=
+  make_black (insert_aux x t).
+
+Definition almost_red_black t :=
+  match t with
+  | Leaf => true
+
+  | Node _ t1 _ t2 =>
+    match is_red_black_aux t1, is_red_black_aux t2 with
+    | Some h1, Some h2 => beq_nat h1 h2
+    | _, _ => false
+    end
+  end.
+
+Lemma is_red_black_almost_red_black :
+  forall t,
+    is_red_black t = true ->
+    almost_red_black t = true.
+Proof.
+  intros t.
+  unfold is_red_black, almost_red_black.
+  destruct t as [|[] t1 x t2]; simpl.
+  + intros _. reflexivity.
+  + destruct (is_red_black_aux t1) as [h1|]; trivial.
+    destruct (is_red_black_aux t2) as [h2|]; trivial.
+    destruct (beq_nat h1 h2); trivial.
+  + destruct (is_red_black_aux t1) as [h1|]; trivial.
+    destruct (is_red_black_aux t2) as [h2|]; trivial.
+    destruct (beq_nat h1 h2); trivial.
+Qed.
+
+Lemma balance_correct :
+  forall c t1 x t2,
+    almost_red_black t1 = true ->
+    almost_red_black t2 = true ->
+    almost_red_black (balance c t1 x t2) = true.
+Proof.
+  intros []; simpl. (* Needs more hypotheses... *)
+Admitted.
 
 End RedBlack.
 
