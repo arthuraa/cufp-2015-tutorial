@@ -106,7 +106,7 @@ Proof.
   intros b.
   destruct b. (* Do case analysis on b *)
   + (* We use the "bullets" '+' '-' and '*' to delimit subgoals *)
-    (* true case *)
+    (* true case *) 
     simpl.
     reflexivity.
   + (* false case *)
@@ -476,7 +476,9 @@ Proof.
     + simpl. intros H. inversion H.
   - intros k. destruct k as [|k].
     + simpl. intros H. inversion H.
-    + simpl. intros H. rewrite (IH k).
+    + simpl. intros H.
+(*      apply IH in H. *)
+      rewrite (IH k).
       * reflexivity.
       * apply H.
 Qed.
@@ -639,13 +641,11 @@ Lemma tr_rev_correct_try_one :
     tr_rev l = rev l.
 Proof.
   intros T l.
+  unfold tr_rev.
   induction l as [| h t IH].
   + simpl.
-    unfold tr_rev.
-    simpl.
     reflexivity.
-  + unfold tr_rev in *. (* "in *" allows us to apply a rewrite or unfold globally *)
-    simpl.
+  + simpl.
     (* and now we're stuck... *)
 Admitted.
 
@@ -674,6 +674,19 @@ Restart.
     rewrite <- app_assoc.
     simpl.
     reflexivity.
+Qed.
+
+Lemma tr_rev_correct :
+  forall T (l : list T),
+    tr_rev l = rev l.
+Proof.  
+  intros T l.
+  unfold tr_rev.
+  induction l as [| h t IH].
+  + simpl.
+    reflexivity.
+  + simpl.
+    apply tr_rev'_correct.
 Qed.
 
 (* ###################################################################### *)
@@ -767,11 +780,3 @@ Fixpoint combine {T} {n1} {n2} (s1 : istack T n1) (s2 : istack T n2) :
 (* Exercise: Write a snoc function to add an element to the bottom of 
    an indexed stack. Do not use the combine function (in this case, it will make 
    life difficult.) *)
-  
-Rewriting
-
-Lists (Polymorphism)
-
-Nat-Indexed Stacks
-
-Tactics Cheat Sheet
