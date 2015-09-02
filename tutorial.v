@@ -700,7 +700,7 @@ Require Import Psatz.
 Section RedBlack.
 
 Variable A : Type.
-Variable comp : A -> A -> bool.
+Variable comp : A -> A -> comparison.
 
 Inductive color := Red | Black.
 
@@ -724,7 +724,7 @@ Fixpoint is_red_black_aux (t : tree) : option nat :=
       if beq_nat h1 h2 then
         match c with
         | Red => match tree_color t1, tree_color t2 with
-                 | Black, Black => Some (S h1)
+                 | Black, Black => Some h1
                  | _, _ => None
                  end
         | Black => Some (S h1)
@@ -841,9 +841,11 @@ Fixpoint member x t : bool :=
   match t with
   | Leaf => false
   | Node _ t1 x' t2 =>
-    if comp x x' then
-      comp x' x || member x t1
-    else member x t2
+    match comp x x' with
+    | Lt => member x t1
+    | Eq => true
+    | Gt => member x t2
+    end
   end.
 
 Definition balance c t1 x t2 : tree :=
@@ -860,10 +862,11 @@ Fixpoint insert_aux x t : tree :=
   match t with
   | Leaf => Node Red Leaf x Leaf
   | Node c t1 x' t2 =>
-    if comp x x' then
-      if comp x' x then t (* Element was already present *)
-      else balance c (insert_aux x t1) x' t2
-    else balance c t1 x' (insert_aux x t2)
+    match comp x x' with
+    | Lt => balance c (insert_aux x t1) x' t2
+    | Eq => t (* Element was already present *)
+    | Gt => balance c t1 x' (insert_aux x t2)
+    end
   end.
 
 Definition make_black t : tree :=
@@ -875,42 +878,67 @@ Definition make_black t : tree :=
 Definition insert x t : tree :=
   make_black (insert_aux x t).
 
-Definition almost_red_black t :=
+Definition almost_red_black t : option nat :=
   match t with
-  | Leaf => true
+  | Leaf => Some 0
 
-  | Node _ t1 _ t2 =>
+  | Node c t1 _ t2 =>
     match is_red_black_aux t1, is_red_black_aux t2 with
-    | Some h1, Some h2 => beq_nat h1 h2
-    | _, _ => false
+    | Some h1, Some h2 =>
+      if beq_nat h1 h2 then Some h1
+      else None
+    | _, _ => None
     end
   end.
 
-Lemma is_red_black_almost_red_black :
-  forall t,
-    is_red_black t = true ->
-    almost_red_black t = true.
+Lemma insert_aux_correct :
+  forall t x,
+    match is_red_black_aux t with
+    | Some h =>
+      match tree_color t with
+      | Red => almost_red_black (insert_aux x t) = Some h
+      | Black => is_red_black_aux (insert_aux x t) = Some h
+      end
+    | None => True
+    end.
 Proof.
-  intros t.
-  unfold is_red_black, almost_red_black.
-  destruct t as [|[] t1 x t2]; simpl.
-  + intros _. reflexivity.
-  + destruct (is_red_black_aux t1) as [h1|]; trivial.
-    destruct (is_red_black_aux t2) as [h2|]; trivial.
-    destruct (beq_nat h1 h2); trivial.
-  + destruct (is_red_black_aux t1) as [h1|]; trivial.
-    destruct (is_red_black_aux t2) as [h2|]; trivial.
-    destruct (beq_nat h1 h2); trivial.
-Qed.
-
-Lemma balance_correct :
-  forall c t1 x t2,
-    almost_red_black t1 = true ->
-    almost_red_black t2 = true ->
-    almost_red_black (balance c t1 x t2) = true.
-Proof.
-  intros []; simpl. (* Needs more hypotheses... *)
-Admitted.
+  intros t x.
+  induction t as [|[] t1 IH1 x' t2 IH2]; simpl; trivial.
+  - destruct (comp x x'); simpl.
+    + destruct (is_red_black_aux t1) as [h1|]; trivial.
+      destruct (is_red_black_aux t2) as [h2|]; trivial.
+      destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
+      rewrite beq_nat_true_iff in eh1h2.
+      rewrite eh1h2 in *.
+      destruct (tree_color t1); trivial.
+      destruct (tree_color t2); trivial.
+    + destruct (is_red_black_aux t1) as [h1|]; trivial.
+      destruct (is_red_black_aux t2) as [h2|]; trivial.
+      destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
+      rewrite beq_nat_true_iff in eh1h2.
+      rewrite eh1h2 in *.
+      destruct (tree_color t1); trivial.
+      destruct (tree_color t2); trivial.
+      rewrite IH1, <- beq_nat_refl; trivial.
+    + destruct (is_red_black_aux t1) as [h1|]; trivial.
+      destruct (is_red_black_aux t2) as [h2|]; trivial.
+      destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
+      rewrite beq_nat_true_iff in eh1h2.
+      rewrite eh1h2 in *.
+      destruct (tree_color t1); trivial.
+      destruct (tree_color t2); trivial.
+      rewrite IH2, <- beq_nat_refl; trivial.
+  - destruct (comp x x'). ; simpl.
+    + destruct (is_red_black_aux t1) as [h1|]; trivial.
+      destruct (is_red_black_aux t2) as [h2|]; trivial.
+      destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
+    + destruct (is_red_black_aux t1) as [h1|]; trivial.
+      destruct (is_red_black_aux t2) as [h2|]; trivial.
+      destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
+      rewrite beq_nat_true_iff in eh1h2.
+      rewrite eh1h2 in *.
+      { destruct t1 as [|c1 t11 x1 t12]; simpl.
+        - simpl.
 
 End RedBlack.
 
