@@ -693,6 +693,9 @@ Qed.
 (** * Case study: Red-Black Trees *)
 
 Open Scope bool_scope.
+Require Import Coq.Arith.Arith_base.
+Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Psatz.
 
 Section RedBlack.
 
@@ -711,15 +714,30 @@ Definition tree_color (t : tree) : color :=
   | Node c _ _ _ => c
   end.
 
-Fixpoint is_red_black (t : tree) : bool :=
+Fixpoint is_red_black_aux (t : tree) : option nat :=
   match t with
-  | Leaf => true
-  | Node Black t1 _ t2 => is_red_black t1 && is_red_black t2
-  | Node Red t1 _ t2 =>
-    match tree_color t1, tree_color t2 with
-    | Black, Black => is_red_black t1 && is_red_black t2
-    | _, _ => false
+  | Leaf => Some 0
+
+  | Node c t1 _ t2 =>
+    match is_red_black_aux t1, is_red_black_aux t2 with
+    | Some h1, Some h2 =>
+      if beq_nat h1 h2 then
+        match c with
+        | Red => match tree_color t1, tree_color t2 with
+                 | Black, Black => Some (S h1)
+                 | _, _ => None
+                 end
+        | Black => Some (S h1)
+        end
+      else None
+    | _, _ => None
     end
+  end.
+
+Definition is_red_black (t : tree) : bool :=
+  match is_red_black_aux t with
+  | Some _ => true
+  | None => false
   end.
 
 Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
@@ -727,6 +745,172 @@ Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
   | Leaf => 0
   | Node _ t1 _ t2 => S (f (size f t1) (size f t2))
   end.
+
+(** Note that [size plus] computes the number of elements stored in
+    the tree. [size max] computes the height of the tree, whereas
+    [size min] computes the length of the shortest path from the root
+    of the tree to a leaf. *)
+
+Lemma size_min_black_height :
+  forall t,
+    match is_red_black_aux t with
+    | Some h => h <= size min t
+    | None => True
+    end.
+Proof.
+  intros t.
+  induction t as [|c t1 IH1 x t2 IH2].
+  + simpl. lia. (* Talk about lia? *)
+  + simpl.
+    destruct (is_red_black_aux t1) as [h1|]; trivial. (* Talk about semicolons? *)
+    destruct (is_red_black_aux t2) as [h2|]; trivial.
+    destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
+    rewrite beq_nat_true_iff in eh1h2.
+    rewrite eh1h2 in *.
+    destruct c.
+    - destruct (tree_color t1); trivial.
+      destruct (tree_color t2); trivial.
+      lia.
+    - lia.
+Qed.
+
+Lemma size_max_black_height :
+  forall t,
+    match is_red_black_aux t with
+    | Some h =>
+      match tree_color t with
+      | Red => size max t <= 2 * h + 1
+      | Black => size max t <= 2 * h
+      end
+    | None => True
+    end.
+Proof.
+  intros t.
+  induction t as [|c t1 IH1 x t2 IH2].
+  + simpl. lia.
+  + simpl.
+    destruct (is_red_black_aux t1) as [h1|]; trivial. (* Talk about semicolons? *)
+    destruct (is_red_black_aux t2) as [h2|]; trivial.
+    destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
+    rewrite beq_nat_true_iff in eh1h2.
+    rewrite eh1h2 in *.
+    destruct c.
+    - destruct (tree_color t1); trivial.
+      destruct (tree_color t2); trivial.
+      lia.
+    - assert (H1 : size max t1 <= 2 * h2 + 1).
+      { destruct (tree_color t1); lia. }
+      assert (H2 : size max t2 <= 2 * h2 + 1).
+      { destruct (tree_color t2); lia. }
+      lia.
+Qed.
+
+Lemma size_max_size_min :
+  forall t,
+    is_red_black t = true ->
+    size max t <= 2 * size min t + 1.
+Proof.
+  intros t H.
+  unfold is_red_black in *.
+  assert (Hmax := size_max_black_height t).
+  assert (Hmin := size_min_black_height t).
+  destruct (is_red_black_aux t) as [h|].
+  + assert (Hmax' : size max t <= 2 * h + 1).
+    { destruct (tree_color t); lia. }
+    lia.
+  + inversion H.
+Qed.
+
+Lemma size_min_size_plus :
+  forall t,
+    2 ^ size min t <= size plus t + 1.
+Proof.
+  intros t.
+  induction t as [|c t1 IH1 x t2 IH2]; simpl.
+  - lia.
+  - assert (H1 : 2 ^ min (size min t1) (size min t2)
+                 <= 2 ^ size min t1).
+    { apply Nat.pow_le_mono_r; lia. }
+    assert (H2 : 2 ^ min (size min t1) (size min t2)
+                 <= 2 ^ size min t2).
+    { apply Nat.pow_le_mono_r; lia. }
+    lia.
+Qed.
+
+Fixpoint member x t : bool :=
+  match t with
+  | Leaf => false
+  | Node _ t1 x' t2 =>
+    if comp x x' then
+      comp x' x || member x t1
+    else member x t2
+  end.
+
+Definition balance c t1 x t2 : tree :=
+  match c, t1, x, t2 with
+  | Black, Node Red (Node Red t1 x1 t2) x2 t3, x3, t4
+  | Black, Node Red t1 x1 (Node Red t2 x2 t3), x3, t4
+  | Black, t1, x1, Node Red (Node Red t2 x2 t3) x3 t4
+  | Black, t1, x1, Node Red t2 x2 (Node Red t3 x3 t4)
+    => Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)
+  | _, _, _, _ => Node c t1 x t2
+  end.
+
+Fixpoint insert_aux x t : tree :=
+  match t with
+  | Leaf => Node Red Leaf x Leaf
+  | Node c t1 x' t2 =>
+    if comp x x' then
+      if comp x' x then t (* Element was already present *)
+      else balance c (insert_aux x t1) x' t2
+    else balance c t1 x' (insert_aux x t2)
+  end.
+
+Definition make_black t : tree :=
+  match t with
+  | Leaf => Leaf
+  | Node _ t1 x t2 => Node Black t1 x t2
+  end.
+
+Definition insert x t : tree :=
+  make_black (insert_aux x t).
+
+Definition almost_red_black t :=
+  match t with
+  | Leaf => true
+
+  | Node _ t1 _ t2 =>
+    match is_red_black_aux t1, is_red_black_aux t2 with
+    | Some h1, Some h2 => beq_nat h1 h2
+    | _, _ => false
+    end
+  end.
+
+Lemma is_red_black_almost_red_black :
+  forall t,
+    is_red_black t = true ->
+    almost_red_black t = true.
+Proof.
+  intros t.
+  unfold is_red_black, almost_red_black.
+  destruct t as [|[] t1 x t2]; simpl.
+  + intros _. reflexivity.
+  + destruct (is_red_black_aux t1) as [h1|]; trivial.
+    destruct (is_red_black_aux t2) as [h2|]; trivial.
+    destruct (beq_nat h1 h2); trivial.
+  + destruct (is_red_black_aux t1) as [h1|]; trivial.
+    destruct (is_red_black_aux t2) as [h2|]; trivial.
+    destruct (beq_nat h1 h2); trivial.
+Qed.
+
+Lemma balance_correct :
+  forall c t1 x t2,
+    almost_red_black t1 = true ->
+    almost_red_black t2 = true ->
+    almost_red_black (balance c t1 x t2) = true.
+Proof.
+  intros []; simpl. (* Needs more hypotheses... *)
+Admitted.
 
 End RedBlack.
 
@@ -772,11 +956,11 @@ Definition ipop {T} {n} (s : istack T (S n)) : T * istack T n :=
 
 Fixpoint combine {T} {n1} {n2} (s1 : istack T n1) (s2 : istack T n2) :
   istack T (n1 + n2) :=
-    match s1 with 
+    match s1 with
     | empty => s2
     | add _ x s1' => add x (combine s1' s2)
     end.
 
-(* Exercise: Write a snoc function to add an element to the bottom of 
-   an indexed stack. Do not use the combine function (in this case, it will make 
+(* Exercise: Write a snoc function to add an element to the bottom of
+   an indexed stack. Do not use the combine function (in this case, it will make
    life difficult.) *)
