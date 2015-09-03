@@ -728,26 +728,24 @@ Fixpoint well_colored (t : tree) : bool :=
     colors_ok && well_colored t1 && well_colored t2
   end.
 
-Fixpoint black_height (t : tree) : option nat :=
+Fixpoint black_height (t : tree) : nat :=
   match t with
-  | Leaf => Some 0
-  | Node c t1 _ t2 =>
-    match black_height t1, black_height t2 with
-    | Some h1, Some h2 => if beq_nat h1 h2 then
-                            Some match c with
-                                 | Red => h1
-                                 | Black => S h1
-                                 end
-                          else None
-    | _, _ => None
-    end
+  | Leaf => 0
+  | Node Red t _ _ => black_height t
+  | Node Black t _ _ => S (black_height t)
+  end.
+
+Fixpoint height_ok (t : tree) : bool :=
+  match t with
+  | Leaf => true
+  | Node _ t1 _ t2 =>
+    beq_nat (black_height t1) (black_height t2)
+    && height_ok t1
+    && height_ok t2
   end.
 
 Definition is_red_black (t : tree) : bool :=
-  match well_colored t, black_height t with
-  | true, Some _ => true
-  | _, _ => false
-  end.
+  well_colored t && height_ok t.
 
 Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
   match t with
@@ -762,70 +760,68 @@ Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
 
 Lemma size_min_black_height :
   forall t,
-    match black_height t with
-    | Some h => h <= size min t
-    | None => True
-    end.
+    if height_ok t then black_height t <= size min t
+    else True.
 Proof.
   intros t.
   induction t as [|c t1 IH1 x t2 IH2].
   + simpl. lia. (* Talk about lia? *)
   + simpl.
-    destruct (black_height t1) as [h1|]; trivial. (* Talk about semicolons? *)
-    destruct (black_height t2) as [h2|]; trivial.
-    destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
-    rewrite beq_nat_true_iff in eh1h2.
-    rewrite eh1h2 in *.
+    destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
+    rewrite beq_nat_true_iff in e12.
+    destruct (height_ok t1); simpl; trivial. (* Talk about semicolons? *)
+    destruct (height_ok t2); simpl; trivial.
     destruct c; lia.
 Qed.
 
 Lemma size_max_black_height :
   forall t,
-    match black_height t, well_colored t with
-    | Some h, true =>
+    if is_red_black t then
       match tree_color t with
-      | Red => size max t <= 2 * h + 1
-      | Black => size max t <= 2 * h
+      | Red => size max t <= 2 * black_height t + 1
+      | Black => size max t <= 2 * black_height t
       end
-    | _, _ => True
-    end.
+    else True.
 Proof.
-  intros t.
+  intros t. unfold is_red_black.
   induction t as [|c t1 IH1 x t2 IH2]; simpl.
-  + lia.
-  + destruct (black_height t1) as [h1|]; trivial.
-    destruct (black_height t2) as [h2|]; trivial.
-    destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
-    rewrite beq_nat_true_iff in eh1h2.
-    rewrite eh1h2 in *.
-    destruct c.
-    - destruct (tree_color t1); simpl; trivial.
+  - lia.
+  - destruct c.
+    + destruct (tree_color t1); simpl; trivial.
       destruct (tree_color t2); simpl; trivial.
       destruct (well_colored t1); simpl; trivial.
       destruct (well_colored t2); simpl; trivial.
-      lia.
-    - simpl.
-      destruct (well_colored t1); simpl; trivial.
+      destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
+      rewrite beq_nat_true_iff in e12.
+      destruct (height_ok t1); simpl; trivial.
+      destruct (height_ok t2); simpl; trivial.
+      simpl in *. lia.
+    + destruct (well_colored t1); simpl; trivial.
       destruct (well_colored t2); simpl; trivial.
-      assert (H1 : size max t1 <= 2 * h2 + 1).
-      { destruct (tree_color t1); lia. }
-      assert (H2 : size max t2 <= 2 * h2 + 1).
-      { destruct (tree_color t2); lia. }
+      destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
+      rewrite beq_nat_true_iff in e12.
+      destruct (height_ok t1); simpl; trivial.
+      destruct (height_ok t2); simpl; trivial.
+      assert (H1 : size max t1 <= 2 * black_height t1 + 1).
+      { destruct (tree_color t1); simpl in *; lia. }
+      assert (H2 : size max t2 <= 2 * black_height t2 + 1).
+      { destruct (tree_color t2); simpl in *; lia. }
       lia.
 Qed.
 
 Lemma size_max_size_min :
   forall t,
-    if is_red_black t then
-      size max t <= 2 * size min t + 1
+    if is_red_black t then size max t <= 2 * size min t + 1
     else True.
 Proof.
-  intros t. unfold is_red_black.
+  intros t.
   assert (Hmax := size_max_black_height t).
   assert (Hmin := size_min_black_height t).
+  unfold is_red_black in *.
   destruct (well_colored t); trivial.
-  destruct (black_height t) as [h|]; trivial.
-  assert (Hmax' : size max t <= 2 * h + 1).
+  destruct (height_ok t); trivial.
+  simpl in *.
+  assert (Hmax' : size max t <= 2 * black_height t + 1).
   { destruct (tree_color t); lia. }
   lia.
 Qed.
