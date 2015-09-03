@@ -106,7 +106,7 @@ Proof.
   intros b.
   destruct b. (* Do case analysis on b *)
   + (* We use the "bullets" '+' '-' and '*' to delimit subgoals *)
-    (* true case *) 
+    (* true case *)
     simpl.
     reflexivity.
   + (* false case *)
@@ -679,7 +679,7 @@ Qed.
 Lemma tr_rev_correct :
   forall T (l : list T),
     tr_rev l = rev l.
-Proof.  
+Proof.
   intros T l.
   unfold tr_rev.
   induction l as [| h t IH].
@@ -702,18 +702,158 @@ Require Import Psatz.
     trees are binary search trees that use an intricate invariant to
     guarantee that they are well-balanced.
 
-We use Coq's [Section] mechanism to declare a type variable that is valid *)
+    We use Coq's [Section] mechanism to state our definitions within
+    the scope of common parameters. This makes our notation lighter by
+    avoiding having to redeclare these arguments in all definitions. *)
 
 Section RedBlack.
 
 Variable A : Type.
 Variable comp : A -> A -> comparison.
 
+Hypothesis comp_opp :
+  forall x y, comp x y = CompOpp (comp y x).
+Hypothesis comp_refl_iff :
+  forall x y, comp x y = Eq <-> x = y.
+Hypothesis comp_trans :
+  forall x y z, comp x y = Lt ->
+                comp y z = Lt ->
+                comp x z = Lt.
+
+(* Exercise *)
+Lemma comp_refl : forall x, comp x x = Eq.
+Proof.
+  intros x.
+  apply comp_refl_iff.
+  reflexivity.
+Qed.
+
 Inductive color := Red | Black.
 
 Inductive tree :=
 | Leaf : tree
 | Node : color -> tree -> A -> tree -> tree.
+
+(** We begin by formalizing what it means for a tree to be a binary
+    search tree. *)
+
+Fixpoint all (f : A -> bool) (t : tree) : bool :=
+  match t with
+  | Leaf => true
+  | Node _ t1 x t2 => all f t1 && f x && all f t2
+  end.
+
+Definition ltb x y :=
+  match comp x y with
+  | Lt => true
+  | _ => false
+  end.
+
+Definition eqb x y :=
+  match comp x y with
+  | Eq => true
+  | _ => false
+  end.
+
+Fixpoint search_tree (t : tree) : bool :=
+  match t with
+  | Leaf => true
+  | Node _ t1 x t2 =>
+    all (fun y => ltb y x) t1
+    && all (ltb x) t2
+    && search_tree t1
+    && search_tree t2
+  end.
+
+Fixpoint occurs (x : A) (t : tree) : bool :=
+  match t with
+  | Leaf => false
+  | Node _ t1 y t2 => occurs x t1 || eqb x y || occurs x t2
+  end.
+
+Fixpoint member x t : bool :=
+  match t with
+  | Leaf => false
+  | Node _ t1 x' t2 =>
+    match comp x x' with
+    | Lt => member x t1
+    | Eq => true
+    | Gt => member x t2
+    end
+  end.
+
+(* Exercise? *)
+Lemma all_weaken :
+  forall f g,
+    (forall x, f x = true -> g x = true) ->
+    forall t, all f t = true -> all g t = true.
+Proof.
+  intros f g Hfg t.
+  induction t as [|c t1 IH1 x t2 IH2]; simpl; trivial.
+  intros H.
+  repeat rewrite Bool.andb_true_iff in H.
+  destruct H as [[H1 H2] H3].
+  rewrite IH1; trivial.
+  rewrite IH2; trivial.
+  rewrite Hfg; trivial.
+Qed.
+
+Lemma none_occurs :
+  forall x f t,
+    f x = false ->
+    all f t = true ->
+    occurs x t = false.
+Proof.
+  intros x f t Hfx.
+  induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
+  rewrite Bool.andb_true_iff, Bool.andb_true_iff.
+  intros [[H1 H2] H3].
+  rewrite IH1; trivial. simpl.
+  rewrite IH2; trivial.
+  unfold eqb.
+  destruct (comp x y) eqn:Hxy; trivial.
+  apply comp_refl_iff in Hxy.
+  rewrite <- Hxy, Hfx in H2.
+  congruence.
+Qed.
+
+Lemma member_correct :
+  forall x t,
+    search_tree t = true ->
+    member x t = occurs x t.
+Proof.
+  intros x t.
+  induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
+  repeat rewrite Bool.andb_true_iff.
+  intros [[[H1 H2] H3] H4].
+  unfold eqb.
+  rewrite IH1; trivial.
+  rewrite IH2; trivial.
+  assert (Hx : ltb x x = false).
+  { unfold ltb. rewrite comp_refl. reflexivity. }
+  destruct (comp x y) eqn:Hxy.
+  - rewrite Bool.orb_true_r. reflexivity.
+  - assert (H2' : all (ltb x) t2 = true).
+    { apply (all_weaken (ltb y) (ltb x)); trivial.
+      intros z.
+      unfold ltb.
+      destruct (comp y z) eqn:Hyz; try congruence.
+      rewrite (comp_trans _ _ _ Hxy Hyz).
+      reflexivity. }
+    rewrite (none_occurs x (ltb x) t2 Hx H2').
+    destruct (occurs x t1); reflexivity.
+  - assert (Hxy' : comp y x = Lt).
+    { rewrite comp_opp, Hxy. reflexivity. }
+    assert (H1' : all (fun z => ltb z x) t1 = true).
+    { apply (all_weaken (fun z => ltb z y) (fun z => ltb z x)); trivial.
+      intros z.
+      unfold ltb.
+      destruct (comp z y) eqn:Hyz; try congruence.
+      rewrite (comp_trans _ _ _ Hyz Hxy').
+      reflexivity. }
+    rewrite (none_occurs x (fun z => ltb z x) t1 Hx H1').
+    reflexivity.
+Qed.
 
 Definition tree_color (t : tree) : color :=
   match t with
@@ -849,16 +989,6 @@ Proof.
     lia.
 Qed.
 
-Fixpoint member x t : bool :=
-  match t with
-  | Leaf => false
-  | Node _ t1 x' t2 =>
-    match comp x x' with
-    | Lt => member x t1
-    | Eq => true
-    | Gt => member x t2
-    end
-  end.
 
 Definition balance_black_left tl x tr : tree :=
   match tl, x, tr with
