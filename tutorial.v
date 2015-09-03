@@ -714,30 +714,39 @@ Definition tree_color (t : tree) : color :=
   | Node c _ _ _ => c
   end.
 
-Fixpoint is_red_black_aux (t : tree) : option nat :=
+Fixpoint well_colored (t : tree) : bool :=
+  match t with
+  | Leaf => true
+  | Node c t1 _ t2 =>
+
+    let colors_ok :=
+      match c, tree_color t1, tree_color t2 with
+      | Red, Black, Black => true
+      | Red, _, _ => false
+      | Black, _, _ => true
+      end in
+    colors_ok && well_colored t1 && well_colored t2
+  end.
+
+Fixpoint black_height (t : tree) : option nat :=
   match t with
   | Leaf => Some 0
-
   | Node c t1 _ t2 =>
-    match is_red_black_aux t1, is_red_black_aux t2 with
-    | Some h1, Some h2 =>
-      if beq_nat h1 h2 then
-        match c with
-        | Red => match tree_color t1, tree_color t2 with
-                 | Black, Black => Some h1
-                 | _, _ => None
-                 end
-        | Black => Some (S h1)
-        end
-      else None
+    match black_height t1, black_height t2 with
+    | Some h1, Some h2 => if beq_nat h1 h2 then
+                            Some match c with
+                                 | Red => h1
+                                 | Black => S h1
+                                 end
+                          else None
     | _, _ => None
     end
   end.
 
 Definition is_red_black (t : tree) : bool :=
-  match is_red_black_aux t with
-  | Some _ => true
-  | None => false
+  match well_colored t, black_height t with
+  | true, Some _ => true
+  | _, _ => false
   end.
 
 Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
@@ -753,7 +762,7 @@ Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
 
 Lemma size_min_black_height :
   forall t,
-    match is_red_black_aux t with
+    match black_height t with
     | Some h => h <= size min t
     | None => True
     end.
@@ -762,43 +771,43 @@ Proof.
   induction t as [|c t1 IH1 x t2 IH2].
   + simpl. lia. (* Talk about lia? *)
   + simpl.
-    destruct (is_red_black_aux t1) as [h1|]; trivial. (* Talk about semicolons? *)
-    destruct (is_red_black_aux t2) as [h2|]; trivial.
+    destruct (black_height t1) as [h1|]; trivial. (* Talk about semicolons? *)
+    destruct (black_height t2) as [h2|]; trivial.
     destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
     rewrite beq_nat_true_iff in eh1h2.
     rewrite eh1h2 in *.
-    destruct c.
-    - destruct (tree_color t1); trivial.
-      destruct (tree_color t2); trivial.
-      lia.
-    - lia.
+    destruct c; lia.
 Qed.
 
 Lemma size_max_black_height :
   forall t,
-    match is_red_black_aux t with
-    | Some h =>
+    match black_height t, well_colored t with
+    | Some h, true =>
       match tree_color t with
       | Red => size max t <= 2 * h + 1
       | Black => size max t <= 2 * h
       end
-    | None => True
+    | _, _ => True
     end.
 Proof.
   intros t.
-  induction t as [|c t1 IH1 x t2 IH2].
-  + simpl. lia.
-  + simpl.
-    destruct (is_red_black_aux t1) as [h1|]; trivial. (* Talk about semicolons? *)
-    destruct (is_red_black_aux t2) as [h2|]; trivial.
+  induction t as [|c t1 IH1 x t2 IH2]; simpl.
+  + lia.
+  + destruct (black_height t1) as [h1|]; trivial.
+    destruct (black_height t2) as [h2|]; trivial.
     destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
     rewrite beq_nat_true_iff in eh1h2.
     rewrite eh1h2 in *.
     destruct c.
-    - destruct (tree_color t1); trivial.
-      destruct (tree_color t2); trivial.
+    - destruct (tree_color t1); simpl; trivial.
+      destruct (tree_color t2); simpl; trivial.
+      destruct (well_colored t1); simpl; trivial.
+      destruct (well_colored t2); simpl; trivial.
       lia.
-    - assert (H1 : size max t1 <= 2 * h2 + 1).
+    - simpl.
+      destruct (well_colored t1); simpl; trivial.
+      destruct (well_colored t2); simpl; trivial.
+      assert (H1 : size max t1 <= 2 * h2 + 1).
       { destruct (tree_color t1); lia. }
       assert (H2 : size max t2 <= 2 * h2 + 1).
       { destruct (tree_color t2); lia. }
@@ -807,18 +816,18 @@ Qed.
 
 Lemma size_max_size_min :
   forall t,
-    is_red_black t = true ->
-    size max t <= 2 * size min t + 1.
+    if is_red_black t then
+      size max t <= 2 * size min t + 1
+    else True.
 Proof.
-  intros t H.
-  unfold is_red_black in *.
+  intros t. unfold is_red_black.
   assert (Hmax := size_max_black_height t).
   assert (Hmin := size_min_black_height t).
-  destruct (is_red_black_aux t) as [h|].
-  + assert (Hmax' : size max t <= 2 * h + 1).
-    { destruct (tree_color t); lia. }
-    lia.
-  + inversion H.
+  destruct (well_colored t); trivial.
+  destruct (black_height t) as [h|]; trivial.
+  assert (Hmax' : size max t <= 2 * h + 1).
+  { destruct (tree_color t); lia. }
+  lia.
 Qed.
 
 Lemma size_min_size_plus :
@@ -848,24 +857,214 @@ Fixpoint member x t : bool :=
     end
   end.
 
-Definition balance c t1 x t2 : tree :=
-  match c, t1, x, t2 with
-  | Black, Node Red (Node Red t1 x1 t2) x2 t3, x3, t4
-  | Black, Node Red t1 x1 (Node Red t2 x2 t3), x3, t4
-  | Black, t1, x1, Node Red (Node Red t2 x2 t3) x3 t4
-  | Black, t1, x1, Node Red t2 x2 (Node Red t3 x3 t4)
-    => Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)
-  | _, _, _, _ => Node c t1 x t2
+Definition balance_black_left tl x tr : tree :=
+  match tl, x, tr with
+  | Node Red (Node Red t1 x1 t2) x2 t3, x3, t4
+  | Node Red t1 x1 (Node Red t2 x2 t3), x3, t4 =>
+    Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)
+  | _, _, _ => Node Black tl x tr
   end.
+
+Definition balance_black_right tl x tr : tree :=
+  match tl, x, tr with
+  | t1, x1, Node Red (Node Red t2 x2 t3) x3 t4
+  | t1, x1, Node Red t2 x2 (Node Red t3 x3 t4) =>
+    Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)
+  | _, _, _ => Node Black tl x tr
+  end.
+
+Definition balance_left c t1 x t2 : tree :=
+  match c with
+  | Red => Node c t1 x t2
+  | Black => balance_black_left t1 x t2
+  end.
+
+Definition balance_right c t1 x t2 : tree :=
+  match c with
+  | Red => Node c t1 x t2
+  | Black => balance_black_right t1 x t2
+  end.
+
+Lemma case_balance_black_left :
+  forall tl x3 t4,
+    (exists t1 x1 t2 x2 t3,
+       tl = Node Red (Node Red t1 x1 t2) x2 t3
+       \/ tl = Node Red t1 x1 (Node Red t2 x2 t3))
+    \/ balance_black_left tl x3 t4
+       = Node Black tl x3 t4.
+Proof.
+  intros tl x3 t4.
+  refine (match tl with
+          | Node Red (Node Red _ _ _) _ _ => _
+          | Node Red _ _ (Node Red _ _ _) => _
+          | _ => _
+          end); try solve [right; reflexivity];
+  left; eauto 10.
+Qed.
+
+Lemma black_height_balance_left1 :
+  forall t1 x1 t2 x2 t3 x3 t4,
+    black_height (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)) =
+    black_height (Node Black (Node Red (Node Red t1 x1 t2) x2 t3) x3 t4).
+Proof.
+  intros t1 x1 t2 x2 t3 x3 t4. simpl.
+  destruct (black_height t1) as [h1|]; trivial.
+  destruct (black_height t2) as [h2|]; trivial.
+  destruct (beq_nat h1 h2) eqn:e12; trivial.
+  rewrite beq_nat_true_iff in e12. rewrite e12.
+  destruct (black_height t3) as [h3|]; trivial.
+  destruct (black_height t4) as [h4|].
+  - destruct (beq_nat h3 h4) eqn:e34; simpl.
+    + destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+      rewrite beq_nat_true_iff in e23. rewrite e23, e34.
+      reflexivity.
+    + destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+      rewrite beq_nat_true_iff in e23. rewrite e23, e34.
+      reflexivity.
+  - destruct (beq_nat h2 h3); trivial.
+Qed.
+
+Lemma black_height_balance_left2 :
+  forall t1 x1 t2 x2 t3 x3 t4,
+    black_height (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)) =
+    black_height (Node Black (Node Red t1 x1 (Node Red t2 x2 t3)) x3 t4).
+Proof.
+  intros t1 x1 t2 x2 t3 x3 t4. simpl.
+  destruct (black_height t1) as [h1|]; trivial.
+  destruct (black_height t2) as [h2|]; trivial.
+  destruct (beq_nat h1 h2) eqn:e12; trivial.
+  - rewrite beq_nat_true_iff in e12. rewrite e12.
+    destruct (black_height t3) as [h3|]; trivial.
+    destruct (black_height t4) as [h4|].
+    + destruct (beq_nat h3 h4) eqn:e34; simpl.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite beq_nat_true_iff in e23.
+        rewrite <- beq_nat_refl, e23, e34.
+        reflexivity.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite beq_nat_true_iff in e23.
+        rewrite <- beq_nat_refl, e23, e34.
+        reflexivity.
+    + destruct (beq_nat h2 h3); trivial.
+      rewrite <- beq_nat_refl. reflexivity.
+  - destruct (black_height t3) as [h3|]; trivial.
+    destruct (black_height t4) as [h4|].
+    + destruct (beq_nat h3 h4) eqn:e34; simpl.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite e12. reflexivity.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite e12. reflexivity.
+    + destruct (beq_nat h2 h3); trivial.
+      rewrite e12. reflexivity.
+Qed.
+
+Lemma black_height_balance_left :
+  forall c t1 x t2,
+    black_height (balance_left c t1 x t2)
+    = black_height (Node c t1 x t2).
+Proof.
+  intros [] t1 x t2; trivial.
+  refine (match t1 with
+          | Node Red (Node Red _ _ _) _ _ => _
+          | Node Red _ _ (Node Red _ _ _) => _
+          | _ => _
+          end); try reflexivity.
+  - rewrite <- black_height_balance_left2. reflexivity.
+  - rewrite <- black_height_balance_left1. reflexivity.
+  - rewrite <- black_height_balance_left2. reflexivity.
+Qed.
+
+Lemma black_height_balance_right1 :
+  forall t1 x1 t2 x2 t3 x3 t4,
+    black_height (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)) =
+    black_height (Node Black t1 x1 (Node Red (Node Red t2 x2 t3) x3 t4)).
+Proof.
+  intros t1 x1 t2 x2 t3 x3 t4. simpl.
+  destruct (black_height t1) as [h1|]; trivial.
+  destruct (black_height t2) as [h2|]; trivial.
+  destruct (beq_nat h1 h2) eqn:e12.
+  - destruct (black_height t3) as [h3|]; trivial.
+    destruct (black_height t4) as [h4|].
+    + destruct (beq_nat h3 h4) eqn:e34; simpl.
+      * rewrite beq_nat_true_iff in e34.
+
+    + destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+      rewrite beq_nat_true_iff in e23. rewrite e23, e34.
+      reflexivity.
+    + destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+      rewrite beq_nat_true_iff in e23. rewrite e23, e34.
+      reflexivity.
+    +
+
+
+  - destruct (beq_nat h3 h4) eqn:e34; simpl.
+    + destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+      rewrite beq_nat_true_iff in e23. rewrite e23, e34.
+      reflexivity.
+    + destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+      rewrite beq_nat_true_iff in e23. rewrite e23, e34.
+      reflexivity.
+  - destruct (beq_nat h2 h3); trivial.
+Qed.
+
+Lemma black_height_balance_left2 :
+  forall t1 x1 t2 x2 t3 x3 t4,
+    black_height (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)) =
+    black_height (Node Black (Node Red t1 x1 (Node Red t2 x2 t3)) x3 t4).
+Proof.
+  intros t1 x1 t2 x2 t3 x3 t4. simpl.
+  destruct (black_height t1) as [h1|]; trivial.
+  destruct (black_height t2) as [h2|]; trivial.
+  destruct (beq_nat h1 h2) eqn:e12; trivial.
+  - rewrite beq_nat_true_iff in e12. rewrite e12.
+    destruct (black_height t3) as [h3|]; trivial.
+    destruct (black_height t4) as [h4|].
+    + destruct (beq_nat h3 h4) eqn:e34; simpl.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite beq_nat_true_iff in e23.
+        rewrite <- beq_nat_refl, e23, e34.
+        reflexivity.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite beq_nat_true_iff in e23.
+        rewrite <- beq_nat_refl, e23, e34.
+        reflexivity.
+    + destruct (beq_nat h2 h3); trivial.
+      rewrite <- beq_nat_refl. reflexivity.
+  - destruct (black_height t3) as [h3|]; trivial.
+    destruct (black_height t4) as [h4|].
+    + destruct (beq_nat h3 h4) eqn:e34; simpl.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite e12. reflexivity.
+      * destruct (beq_nat h2 h3) eqn:e23; simpl; trivial.
+        rewrite e12. reflexivity.
+    + destruct (beq_nat h2 h3); trivial.
+      rewrite e12. reflexivity.
+Qed.
+
+Lemma black_height_balance_left :
+  forall c t1 x t2,
+    black_height (balance_left c t1 x t2)
+    = black_height (Node c t1 x t2).
+Proof.
+  intros [] t1 x t2; trivial.
+  refine (match t1 with
+          | Node Red (Node Red _ _ _) _ _ => _
+          | Node Red _ _ (Node Red _ _ _) => _
+          | _ => _
+          end); try reflexivity.
+  - rewrite <- black_height_balance_left2. reflexivity.
+  - rewrite <- black_height_balance_left1. reflexivity.
+  - rewrite <- black_height_balance_left2. reflexivity.
+Qed.
 
 Fixpoint insert_aux x t : tree :=
   match t with
   | Leaf => Node Red Leaf x Leaf
   | Node c t1 x' t2 =>
     match comp x x' with
-    | Lt => balance c (insert_aux x t1) x' t2
     | Eq => t (* Element was already present *)
-    | Gt => balance c t1 x' (insert_aux x t2)
+    | Lt => balance_left c (insert_aux x t1) x' t2
+    | Gt => balance_right c t1 x' (insert_aux x t2)
     end
   end.
 
@@ -878,18 +1077,23 @@ Definition make_black t : tree :=
 Definition insert x t : tree :=
   make_black (insert_aux x t).
 
-Definition almost_red_black t : option nat :=
+Definition almost_well_colored t : bool :=
   match t with
-  | Leaf => Some 0
-
-  | Node c t1 _ t2 =>
-    match is_red_black_aux t1, is_red_black_aux t2 with
-    | Some h1, Some h2 =>
-      if beq_nat h1 h2 then Some h1
-      else None
-    | _, _ => None
-    end
+  | Leaf => true
+  | Node _ t1 _ t2 => well_colored t1 && well_colored t2
   end.
+
+Lemma balance_black_left1 :
+  forall t1 x t2 h,
+    almost_red_black t1 = Some h ->
+    tree_color t1 = Red ->
+    is_red_black_aux t2 = Some h ->
+    is_red_black_aux (balance_black_left t1 x t2) = Some (S h).
+Proof.
+  intros [|c1 t11 x1 t12] x t2 h; simpl; try discriminate.
+  intros Ht1 Hc1 Ht2. rewrite Hc1.
+  destruct t11 as [|c11 t111 x11 t112]; simpl in *.
+
 
 Lemma insert_aux_correct :
   forall t x,
@@ -903,8 +1107,9 @@ Lemma insert_aux_correct :
     end.
 Proof.
   intros t x.
-  induction t as [|[] t1 IH1 x' t2 IH2]; simpl; trivial.
-  - destruct (comp x x'); simpl.
+  induction t as [|[] t1 IH1 x' t2 IH2]; trivial.
+  - simpl. reflexivity.
+  - simpl. destruct (comp x x'); simpl.
     + destruct (is_red_black_aux t1) as [h1|]; trivial.
       destruct (is_red_black_aux t2) as [h2|]; trivial.
       destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
@@ -928,17 +1133,21 @@ Proof.
       destruct (tree_color t1); trivial.
       destruct (tree_color t2); trivial.
       rewrite IH2, <- beq_nat_refl; trivial.
-  - destruct (comp x x'). ; simpl.
+  - simpl. destruct (comp x x'); simpl.
     + destruct (is_red_black_aux t1) as [h1|]; trivial.
       destruct (is_red_black_aux t2) as [h2|]; trivial.
       destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
-    + destruct (is_red_black_aux t1) as [h1|]; trivial.
-      destruct (is_red_black_aux t2) as [h2|]; trivial.
+    + clear IH2.
+      destruct (is_red_black_aux t1) as [h1|]; trivial.
+      destruct (is_red_black_aux t2) as [h2|] eqn:E; trivial.
       destruct (beq_nat h1 h2) eqn:eh1h2; trivial.
       rewrite beq_nat_true_iff in eh1h2.
       rewrite eh1h2 in *.
-      { destruct t1 as [|c1 t11 x1 t12]; simpl.
-        - simpl.
+      destruct t1 as [|c1 t11 x1 t12]; simpl in *.
+      * inversion IH1. subst. rewrite E. reflexivity.
+      *
+
+
 
 End RedBlack.
 
