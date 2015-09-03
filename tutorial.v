@@ -1039,6 +1039,15 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma height_ok_make_black :
+  forall t,
+    height_ok (make_black t) = height_ok t.
+Proof. intros [|c t1 x t2]; reflexivity. Qed.
+
+Lemma almost_well_colored_make_black :
+  forall t, well_colored (make_black t) = almost_well_colored t.
+Proof. intros [|c t1 x t2]; reflexivity. Qed.
+
 Lemma well_colored_balance_black_left :
   forall t1 x t2,
     almost_well_colored t1 = true ->
@@ -1126,6 +1135,26 @@ Proof.
         apply well_colored_weaken. trivial. }
       rewrite well_colored_balance_black_right; trivial.
       destruct (well_colored t1); trivial.
+Qed.
+
+Lemma is_red_black_insert :
+  forall x t,
+    if is_red_black t then
+      is_red_black (insert x t) = true
+    else True.
+Proof.
+  intros x t.
+  unfold insert, is_red_black.
+  assert (H1 := well_colored_insert_aux x t).
+  assert (H2 := height_ok_insert_aux x t).
+  rewrite height_ok_make_black.
+  rewrite H2.
+  rewrite almost_well_colored_make_black.
+  destruct (well_colored t); simpl; trivial.
+  destruct (tree_color t).
+  - rewrite H1. destruct (height_ok t); trivial.
+  - rewrite well_colored_weaken; trivial.
+    destruct (height_ok t); trivial.
 Qed.
 
 End RedBlack.
