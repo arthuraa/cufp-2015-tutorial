@@ -697,6 +697,13 @@ Require Import Coq.Arith.Arith_base.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Psatz.
 
+(** We will now see how we can use Coq's language to implement an
+    interesting functional program: a red-black tree module. Red-black
+    trees are binary search trees that use an intricate invariant to
+    guarantee that they are well-balanced.
+
+We use Coq's [Section] mechanism to declare a type variable that is valid *)
+
 Section RedBlack.
 
 Variable A : Type.
@@ -874,14 +881,7 @@ Lemma case_balance_black_left :
       = f (Node Black t1 x t2).
 Proof.
   intros T f H1 H2 t1 x t2.
-  refine (match t1 with
-          | Node Red (Node Red _ _ _) _ _ => _
-          | Node Red _ _ (Node Red _ _ _) => _
-          | _ => _
-          end); try reflexivity.
-  - apply H2.
-  - apply H1.
-  - apply H2.
+  destruct t1 as [|[] [|[]] ? [|[]]]; simpl; trivial.
 Qed.
 
 Definition balance_black_right tl x tr : tree :=
@@ -905,14 +905,7 @@ Lemma case_balance_black_right :
       = f (Node Black t1 x t2).
 Proof.
   intros T f H1 H2 t1 x t2.
-  refine (match t2 with
-          | Node Red (Node Red _ _ _) _ _ => _
-          | Node Red _ _ (Node Red _ _ _) => _
-          | _ => _
-          end); try reflexivity.
-  - apply H2.
-  - apply H1.
-  - apply H2.
+  destruct t2 as [|[] [|[]] ? [|[]]]; simpl; trivial.
 Qed.
 
 Definition balance_left c t1 x t2 : tree :=
