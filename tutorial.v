@@ -704,7 +704,13 @@ Require Import Psatz.
 
     We use Coq's [Section] mechanism to state our definitions within
     the scope of common parameters. This makes our notation lighter by
-    avoiding having to redeclare these arguments in all definitions. *)
+    avoiding having to redeclare these arguments in all definitions.
+
+    Our definitions are parameterized by a type [A] and a comparison
+    function [comp] between elements of [A]. The [comparison] type is
+    defined in the standard library, and includes the values [Lt],
+    [Gt], and [Eq]. Notice that we state a few hypotheses that are
+    needed for our results to hold. *)
 
 Section RedBlack.
 
@@ -728,14 +734,36 @@ Proof.
   reflexivity.
 Qed.
 
+(** Red-black trees are binary trees that contain elements of [A] on
+    their internal nodes, and such that every internal node is colored
+    with either [Red] or [Black]. *)
+
 Inductive color := Red | Black.
 
 Inductive tree :=
 | Leaf : tree
 | Node : color -> tree -> A -> tree -> tree.
 
-(** We begin by formalizing what it means for a tree to be a binary
-    search tree. *)
+(** Before getting into details about the red-black invariants, we can
+    already define a search algorithm that looks up an element [x] of
+    [A] on a tree. Its definition is standard: *)
+
+Fixpoint member x t : bool :=
+  match t with
+  | Leaf => false
+  | Node _ t1 x' t2 =>
+    match comp x x' with
+    | Lt => member x t1
+    | Eq => true
+    | Gt => member x t2
+    end
+  end.
+
+(** We want to formulate a specification for our algorithm and prove
+    that this implementation indeed satisfies it. We begin by
+    formalizing what it means for a tree to be a binary search
+    tree. This will require the following higher-order function, which
+    tests whether all elements of a tree [t] satisfy a property [f]: *)
 
 Fixpoint all (f : A -> bool) (t : tree) : bool :=
   match t with
@@ -743,15 +771,13 @@ Fixpoint all (f : A -> bool) (t : tree) : bool :=
   | Node _ t1 x t2 => all f t1 && f x && all f t2
   end.
 
+(** We can now state the familiar binary-tree search invariant: Each
+    element [x] on an internal node is strictly greater than those to
+    its left, and strictly smaller than those to its right. *)
+
 Definition ltb x y :=
   match comp x y with
   | Lt => true
-  | _ => false
-  end.
-
-Definition eqb x y :=
-  match comp x y with
-  | Eq => true
   | _ => false
   end.
 
@@ -765,21 +791,19 @@ Fixpoint search_tree (t : tree) : bool :=
     && search_tree t2
   end.
 
+(** The specification of [member] is given in terms of a function
+    [occurs] that looks for an element [x] on all nodes of a tree [t]. *)
+
+Definition eqb x y :=
+  match comp x y with
+  | Eq => true
+  | _ => false
+  end.
+
 Fixpoint occurs (x : A) (t : tree) : bool :=
   match t with
   | Leaf => false
   | Node _ t1 y t2 => occurs x t1 || eqb x y || occurs x t2
-  end.
-
-Fixpoint member x t : bool :=
-  match t with
-  | Leaf => false
-  | Node _ t1 x' t2 =>
-    match comp x x' with
-    | Lt => member x t1
-    | Eq => true
-    | Gt => member x t2
-    end
   end.
 
 (* Exercise? *)
