@@ -172,7 +172,7 @@ Proof.
     rewrite IH2; trivial.
 Qed.
 
-(* Exercise? *)
+(* Exercise: *)
 Lemma none_occurs :
   forall (x : A) (f : A -> bool) (t : tree),
     f x = false ->
@@ -238,6 +238,12 @@ Proof.
     reflexivity.
 Qed.
 
+(** We now turn our attention to the red-black invariant. A red-black
+    tree is _valid_ if (1) all paths from the root of the tree to its
+    leaves go through the same number of black nodes, and (2) if red
+    nodes only have black children (we stipulate that the leaves of
+    the tree are black). We begin by formalizing (2). *)
+
 Definition tree_color (t : tree) : color :=
   match t with
   | Leaf => Black
@@ -258,6 +264,11 @@ Fixpoint well_colored (t : tree) : bool :=
     colors_ok && well_colored t1 && well_colored t2
   end.
 
+(** The [black_height] function computes the number of black nodes on
+    the path to the left-most leaf of the tree. It is used in the
+    [height_ok] function, which ensures that _all_ paths have the same
+    number of black nodes. *)
+
 Fixpoint black_height (t : tree) : nat :=
   match t with
   | Leaf => 0
@@ -277,6 +288,12 @@ Fixpoint height_ok (t : tree) : bool :=
 Definition is_red_black (t : tree) : bool :=
   well_colored t && height_ok t.
 
+(** The red-black invariant is important because it implies that the
+    height of the tree is logarithmic on the number of nodes. We will
+    now see how to formally show that this is the case. We begin by
+    defining a function [size] for computing various metrics about our
+    trees: *)
+
 Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
   match t with
   | Leaf => 0
@@ -286,7 +303,10 @@ Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
 (** Note that [size plus] computes the number of elements stored in
     the tree. [size max] computes the height of the tree, whereas
     [size min] computes the length of the shortest path from the root
-    of the tree to a leaf. *)
+    of the tree to a leaf.
+
+    As a warm-up exercise, let's show that the black height of a tree
+    is a lower bound on the length of its minimal path: *)
 
 Lemma size_min_black_height :
   forall t,
@@ -295,14 +315,41 @@ Lemma size_min_black_height :
 Proof.
   intros t.
   induction t as [|c t1 IH1 x t2 IH2].
-  + simpl. lia. (* Talk about lia? *)
+
+  + simpl.
+
+(** To facilitate low-level arithmetic reasoning, we can use the [lia]
+    tactic.
+
+    New Tactics
+    -----------
+
+    - [lia]: Short for "Linear Integer Arithmetic"; tries to solve
+      goals that involve linear systems of inequalites on integers. *)
+
+  lia.
+
   + simpl.
     destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
     rewrite beq_nat_true_iff in e12.
-    destruct (height_ok t1); simpl; trivial. (* Talk about semicolons? *)
+    destruct (height_ok t1); simpl; trivial.
     destruct (height_ok t2); simpl; trivial.
     destruct c; lia.
 Qed.
+
+(** We now need to relate the black height of a tree to its total
+    height, by proving the following fact: *)
+
+Lemma size_max_black_height :
+  forall t,
+    if is_red_black t then size max t <= 2 * black_height t + 1
+    else True.
+Proof. (* stuck ... *) Abort.
+
+(** Unfortunately, this won't work. We need to reason about the
+    coloring properties of red-black trees, and show the following
+    slightly stronger statement, which gives an improved bound for
+    black trees. *)
 
 Lemma size_max_black_height :
   forall t,
@@ -317,15 +364,7 @@ Proof.
   induction t as [|c t1 IH1 x t2 IH2]; simpl.
   - lia.
   - destruct c.
-    + destruct (tree_color t1); simpl; trivial.
-      destruct (tree_color t2); simpl; trivial.
-      destruct (well_colored t1); simpl; trivial.
-      destruct (well_colored t2); simpl; trivial.
-      destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
-      rewrite beq_nat_true_iff in e12.
-      destruct (height_ok t1); simpl; trivial.
-      destruct (height_ok t2); simpl; trivial.
-      simpl in *. lia.
+    + admit. (* fill in here *)
     + destruct (well_colored t1); simpl; trivial.
       destruct (well_colored t2); simpl; trivial.
       destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
@@ -339,22 +378,20 @@ Proof.
       lia.
 Qed.
 
+(** Exercise: Prove the following result using the previous two lemmas
+    relating the height of the tree to the length of its mininal
+    path. *)
+
 Lemma size_max_size_min :
   forall t,
     if is_red_black t then size max t <= 2 * size min t + 1
     else True.
-Proof.
-  intros t.
-  assert (Hmax := size_max_black_height t).
-  assert (Hmin := size_min_black_height t).
-  unfold is_red_black in *.
-  destruct (well_colored t); trivial.
-  destruct (height_ok t); trivial.
-  simpl in *.
-  assert (Hmax' : size max t <= 2 * black_height t + 1).
-  { destruct (tree_color t); lia. }
-  lia.
-Qed.
+Proof. (* fill in here *) Admitted.
+
+(** The previous lemma implies that the tree is well-balanced thanks
+    to the following fact, which shows that the number of elements
+    stored in a tree is exponential in the length of the minimal path:
+    *)
 
 Lemma size_min_size_plus :
   forall t,
@@ -372,6 +409,7 @@ Proof.
     lia.
 Qed.
 
+(** Insertion *)
 
 Definition balance_black_left tl x tr : tree :=
   match tl, x, tr with
