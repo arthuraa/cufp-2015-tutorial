@@ -406,7 +406,14 @@ Proof.
     lia.
 Qed.
 
-(** Insertion *)
+(** As an interesting verification example, we will show how to verify
+    that red-black-tree insertion preserves the data-structure
+    invariants. This definition is taken from Okasaki's classical
+    "Red-Black Trees in a Functional Setting" paper.
+
+    The insertion algorithm works basically as regular binary-tree
+    insertion, except for an additional balancing step, which is
+    required to restore the tree invariants. *)
 
 Definition balance_black_left tl x tr : tree :=
   match tl, x, tr with
@@ -416,22 +423,6 @@ Definition balance_black_left tl x tr : tree :=
   | _, _, _ => Node Black tl x tr
   end.
 
-Lemma case_balance_black_left :
-  forall {T} (f : tree -> T),
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black (Node Red (Node Red t1 x1 t2) x2 t3) x3 t4)) ->
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black (Node Red t1 x1 (Node Red t2 x2 t3)) x3 t4)) ->
-    forall t1 x t2,
-      f (balance_black_left t1 x t2)
-      = f (Node Black t1 x t2).
-Proof.
-  intros T f H1 H2 t1 x t2.
-  destruct t1 as [|[] [|[]] ? [|[]]]; simpl; trivial.
-Qed.
-
 Definition balance_black_right tl x tr : tree :=
   match tl, x, tr with
   | t1, x1, Node Red (Node Red t2 x2 t3) x3 t4
@@ -439,22 +430,6 @@ Definition balance_black_right tl x tr : tree :=
     Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4)
   | _, _, _ => Node Black tl x tr
   end.
-
-Lemma case_balance_black_right :
-  forall {T} (f : tree -> T),
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black t1 x1 (Node Red (Node Red t2 x2 t3) x3 t4))) ->
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black t1 x1 (Node Red t2 x2 (Node Red t3 x3 t4)))) ->
-    forall t1 x t2,
-      f (balance_black_right t1 x t2)
-      = f (Node Black t1 x t2).
-Proof.
-  intros T f H1 H2 t1 x t2.
-  destruct t2 as [|[] [|[]] ? [|[]]]; simpl; trivial.
-Qed.
 
 Definition balance_left c t1 x t2 : tree :=
   match c with
@@ -467,50 +442,6 @@ Definition balance_right c t1 x t2 : tree :=
   | Red => Node c t1 x t2
   | Black => balance_black_right t1 x t2
   end.
-
-Lemma black_height_balance_left :
-  forall c t1 x t2,
-    black_height (balance_left c t1 x t2)
-    = black_height (Node c t1 x t2).
-Proof.
-  intros [] t1 x t2; trivial; simpl.
-  rewrite case_balance_black_left; reflexivity.
-Qed.
-
-Lemma black_height_balance_right :
-  forall c t1 x t2,
-    black_height (balance_right c t1 x t2)
-    = black_height (Node c t1 x t2).
-Proof.
-  intros [] t1 x t2; trivial; simpl.
-  rewrite case_balance_black_right; reflexivity.
-Qed.
-
-Lemma height_ok_balance_left :
-  forall c t1 x t2,
-    height_ok (balance_left c t1 x t2)
-    = height_ok (Node c t1 x t2).
-Proof.
-  intros [] t1 x t2; trivial.
-  apply case_balance_black_left.
-  - clear t1 x t2.
-    intros t1 x1 t2 x2 t3 x3 t4. admit.
-  - clear t1 x t2.
-    intros t1 x1 t2 x2 t3 x3 t4. admit.
-Qed.
-
-Lemma height_ok_balance_right :
-  forall c t1 x t2,
-    height_ok (balance_right c t1 x t2)
-    = height_ok (Node c t1 x t2).
-Proof.
-  intros [] t1 x t2; trivial.
-  apply case_balance_black_right.
-  - clear t1 x t2.
-    intros t1 x1 t2 x2 t3 x3 t4. admit.
-  - clear t1 x t2.
-    intros t1 x1 t2 x2 t3 x3 t4. admit.
-Qed.
 
 Fixpoint insert_aux x t : tree :=
   match t with
@@ -532,62 +463,118 @@ Definition make_black t : tree :=
 Definition insert x t : tree :=
   make_black (insert_aux x t).
 
+(** One problem with our definitions of [balance_left] and
+    [balance_right] is that they are stated in terms of complicated
+    patterns. Internally, these functions are ellaborated in terms of
+    nested matches, which make them more complicated to reason about
+    directly with [destruct]. To remedy this, we show the following
+    lemmas, which allow us to consider the interesting cases directly:
+    *)
+
+Lemma case_balance_black_left :
+  forall {T} (f : tree -> T),
+    (forall t1 x1 t2 x2 t3 x3 t4,
+       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+       = f (Node Black (Node Red (Node Red t1 x1 t2) x2 t3) x3 t4)) ->
+    (forall t1 x1 t2 x2 t3 x3 t4,
+       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+       = f (Node Black (Node Red t1 x1 (Node Red t2 x2 t3)) x3 t4)) ->
+    forall t1 x t2,
+      f (balance_black_left t1 x t2)
+      = f (Node Black t1 x t2).
+Proof.
+  intros T f H1 H2 t1 x t2.
+  destruct t1 as [|[] [|[]] ? [|[]]]; simpl; trivial.
+Qed.
+
+Lemma case_balance_black_right :
+  forall {T} (f : tree -> T),
+    (forall t1 x1 t2 x2 t3 x3 t4,
+       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+       = f (Node Black t1 x1 (Node Red (Node Red t2 x2 t3) x3 t4))) ->
+    (forall t1 x1 t2 x2 t3 x3 t4,
+       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+       = f (Node Black t1 x1 (Node Red t2 x2 (Node Red t3 x3 t4)))) ->
+    forall t1 x t2,
+      f (balance_black_right t1 x t2)
+      = f (Node Black t1 x t2).
+Proof.
+  intros T f H1 H2 t1 x t2.
+  destruct t2 as [|[] [|[]] ? [|[]]]; simpl; trivial.
+Qed.
+
+(** This lemma shows that the black height of a tree is preserved by a
+    balancing step on the left: *)
+
+Lemma black_height_balance_left :
+  forall c t1 x t2,
+    black_height (balance_left c t1 x t2)
+    = black_height (Node c t1 x t2).
+Proof.
+  intros [] t1 x t2; trivial; simpl.
+  rewrite case_balance_black_left; reflexivity.
+Qed.
+
+(* Exercise: Prove this similar statement for the symmetric case. *)
+Lemma black_height_balance_right :
+  forall c t1 x t2,
+    black_height (balance_right c t1 x t2)
+    = black_height (Node c t1 x t2).
+Proof. Admitted.
+
+(* Exercise: Prove the following two lemmas, which show that the
+   consistency of the black heights of a tree is preserved after a
+   balancing step. You can use the [case_balance_black_left] and
+   [case_balance_black_right] to make your life easier. Hint: you will
+   need to reason about the behavior of [beq_nat]. *)
+
+Lemma height_ok_balance_left :
+  forall c t1 x t2,
+    height_ok (balance_left c t1 x t2)
+    = height_ok (Node c t1 x t2).
+Proof. Admitted.
+
+Lemma height_ok_balance_right :
+  forall c t1 x t2,
+    height_ok (balance_right c t1 x t2)
+    = height_ok (Node c t1 x t2).
+Proof. Admitted.
+
+(** Combining these results, we can show that the black height
+    invariant is preserved by [insert_aux]. This proof is left as an
+    exercise. *)
+
+Lemma black_height_insert_aux :
+  forall x t,
+    black_height (insert_aux x t)
+    = black_height t.
+Proof. Admitted.
+
+Lemma height_ok_insert_aux :
+  forall x t,
+    height_ok (insert_aux x t)
+    = height_ok t.
+Proof. Admitted.
+
+(** The most complicated part of the invariant preservation proof for
+    the insertion algorithm is showing that nodes are still colored
+    correctly after an insertion step. One problem is that, even after
+    a balancing step, [insert_aux] may produce a tree that is colored
+    incorrectly at its root. We formalize this property with the
+    following definition: *)
+
 Definition almost_well_colored t : bool :=
   match t with
   | Leaf => true
   | Node _ t1 _ t2 => well_colored t1 && well_colored t2
   end.
 
+(* Exercise: Show that well-colored trees are almost well-colored. *)
 Lemma well_colored_weaken :
   forall t,
     well_colored t = true ->
     almost_well_colored t = true.
-Proof.
-  intros t.
-  destruct t as [|[] t1 x t2]; simpl; trivial.
-  destruct (tree_color t1); simpl; try discriminate.
-  destruct (tree_color t2); simpl; try discriminate.
-  trivial.
-Qed.
-
-Lemma black_height_insert_aux :
-  forall x t,
-    black_height (insert_aux x t)
-    = black_height t.
-Proof.
-  intros x t.
-  induction t as [|c t1 IH1 x' t2 IH2]; trivial.
-  simpl. destruct (comp x x'); trivial.
-  - rewrite black_height_balance_left. simpl.
-    rewrite IH1.
-    reflexivity.
-  - rewrite black_height_balance_right. simpl.
-    reflexivity.
-Qed.
-
-Lemma height_ok_insert_aux :
-  forall x t,
-    height_ok (insert_aux x t)
-    = height_ok t.
-Proof.
-  induction t as [|c t1 IH1 x' t2 IH2]; trivial.
-  simpl. destruct (comp x x'); trivial.
-  - rewrite height_ok_balance_left. simpl.
-    rewrite IH1, black_height_insert_aux.
-    reflexivity.
-  - rewrite height_ok_balance_right. simpl.
-    rewrite IH2, black_height_insert_aux.
-    reflexivity.
-Qed.
-
-Lemma height_ok_make_black :
-  forall t,
-    height_ok (make_black t) = height_ok t.
-Proof. intros [|c t1 x t2]; reflexivity. Qed.
-
-Lemma almost_well_colored_make_black :
-  forall t, well_colored (make_black t) = almost_well_colored t.
-Proof. intros [|c t1 x t2]; reflexivity. Qed.
+Proof. Admitted.
 
 Lemma well_colored_balance_black_left :
   forall t1 x t2,
@@ -678,10 +665,18 @@ Proof.
       destruct (well_colored t1); trivial.
 Qed.
 
+Lemma height_ok_make_black :
+  forall t,
+    height_ok (make_black t) = height_ok t.
+Proof. intros [|c t1 x t2]; reflexivity. Qed.
+
+Lemma almost_well_colored_make_black :
+  forall t, well_colored (make_black t) = almost_well_colored t.
+Proof. intros [|c t1 x t2]; reflexivity. Qed.
+
 Lemma is_red_black_insert :
   forall x t,
-    if is_red_black t then
-      is_red_black (insert x t) = true
+    if is_red_black t then is_red_black (insert x t) = true
     else True.
 Proof.
   intros x t.
