@@ -576,6 +576,13 @@ Lemma well_colored_weaken :
     almost_well_colored t = true.
 Proof. Admitted.
 
+(** The following two lemmas show that tree balancing restores the
+    coloring invariant if one of the trees is almost
+    well-colored. They use more advanced proof automation features to
+    consider many of the cases arising in this proof at once. You
+    don't have to understand how these proofs work right now, but they
+    will be needed later for showing our final result. *)
+
 Lemma well_colored_balance_black_left :
   forall t1 x t2,
     almost_well_colored t1 = true ->
@@ -587,18 +594,15 @@ Proof.
           | Node Red (Node Red _ _ _) _ _ => _
           | Node Red _ _ (Node Red _ _ _) => _
           | _ => _
-          end); simpl; try reflexivity.
-  - destruct (tree_color t3), (tree_color t4); try discriminate; simpl.
-    rewrite Bool.andb_assoc. intros H. rewrite H. reflexivity.
-  - intros H. rewrite H. reflexivity.
-  - destruct (tree_color t3), (tree_color t4); try discriminate; simpl.
-    rewrite Bool.andb_assoc. intros H. rewrite H. reflexivity.
-  - intros H. rewrite H. reflexivity.
-  - destruct (tree_color t5), (tree_color t6); try (rewrite Bool.andb_false_r; discriminate).
-    repeat rewrite Bool.andb_assoc.
-    rewrite Bool.andb_true_r. simpl. intros H. rewrite H. reflexivity.
-  - intros H. rewrite H. reflexivity.
-  - intros H. rewrite H. reflexivity.
+          end); simpl; try reflexivity;
+  repeat match goal with
+  | |- context[match ?b with _ => _ end] =>
+    destruct b; simpl; try discriminate
+  | |- context[?b && _ = true] =>
+    destruct b; simpl; try discriminate
+  | |- _ = true -> _ =>
+    intros H; rewrite H
+  end; reflexivity.
 Qed.
 
 Lemma well_colored_balance_black_right :
@@ -612,20 +616,16 @@ Proof.
           | Node Red (Node Red _ _ _) _ _ => _
           | Node Red _ _ (Node Red _ _ _) => _
           | _ => _
-          end); simpl; try reflexivity.
-  - intros _. apply Bool.andb_true_r.
-  - intros _. apply Bool.andb_true_r.
-  - destruct (tree_color t3), (tree_color t4); try discriminate; simpl.
-    rewrite Bool.andb_true_r. intros H. rewrite H, Bool.andb_true_r. reflexivity.
-  - intros H. rewrite H, Bool.andb_true_r. reflexivity.
-  - destruct (tree_color t3), (tree_color t4); try discriminate; simpl.
-    repeat rewrite <- Bool.andb_assoc. intros H. rewrite H, Bool.andb_true_r. reflexivity.
-  - intros H. rewrite H, Bool.andb_true_r. reflexivity.
-  - destruct (tree_color t5), (tree_color t6); try (rewrite Bool.andb_false_r; discriminate).
-    repeat rewrite <- Bool.andb_assoc. simpl.
-    intros H. rewrite H, Bool.andb_true_r. reflexivity.
-  - intros H. rewrite H, Bool.andb_true_r. reflexivity.
-  - intros H. rewrite H, Bool.andb_true_r. reflexivity.
+          end); simpl; try reflexivity;
+  repeat match goal with
+  | |- ?b = true -> _ =>
+    match b with
+    | context[tree_color ?t] =>
+      destruct (tree_color t); simpl; try discriminate
+    | context[well_colored ?t] =>
+      destruct (well_colored t); simpl; try discriminate
+    end
+  end; repeat rewrite Bool.andb_true_r; reflexivity.
 Qed.
 
 Lemma well_colored_insert_aux :
