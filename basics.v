@@ -128,9 +128,12 @@ Proof.
   + destruct b2.
     - simpl. reflexivity.
     - simpl. reflexivity. (* bullets need to be consistent *)
-  + destruct b2.
-    - simpl. reflexivity.
-    - simpl. reflexivity.
+
+(** Alternatively, if all the subgoals are solved the same way, we can
+    use the [;] operator to execute a tactic on _all_ the generated
+    subgoals, like this: *)
+
+  + destruct b2; simpl; reflexivity.
 Qed.
 
 (** Exercise: Show that false is an identity element for xor -- that
