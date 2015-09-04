@@ -221,8 +221,7 @@ Proof.
       intros z.
       unfold ltb.
       destruct (comp y z) eqn:Hyz; try congruence.
-      rewrite (comp_trans _ _ _ Hxy Hyz).
-      reflexivity. }
+      rewrite (comp_trans x y z); trivial. }
     rewrite (none_occurs x (ltb x) t2 Hx H2').
     destruct (occurs x t1); reflexivity.
   - assert (Hxy' : comp y x = Lt).
@@ -232,10 +231,8 @@ Proof.
       intros z.
       unfold ltb.
       destruct (comp z y) eqn:Hyz; try congruence.
-      rewrite (comp_trans _ _ _ Hyz Hxy').
-      reflexivity. }
-    rewrite (none_occurs x (fun z => ltb z x) t1 Hx H1').
-    reflexivity.
+      rewrite (comp_trans z y x); trivial. }
+    rewrite (none_occurs x (fun z => ltb z x) t1); trivial.
 Qed.
 
 (** We now turn our attention to the red-black invariant. A red-black
