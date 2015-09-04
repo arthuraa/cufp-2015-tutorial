@@ -467,17 +467,47 @@ Qed.
     This is a particular case of what is known as _the principle of
     explosion_, which states that a contradiction implies anything.
 
+
     New tactics
     -----------
 
     - [discriminate]: Looks for an equation between terms starting
       with different constructors, and solves the current goal.
+
+
+    We could try to proceed like this:
+
 *)
 
 Lemma eq_beq_nat :
   forall m n, beq_nat m n = true -> m = n.
 Proof.
-  intros m.
+  intros m k.
+  induction m as [|m IH].
+  - destruct k as [|].
+    + reflexivity.
+    + simpl. intros H. discriminate.
+  - destruct k as [|k].
+    + simpl. intros H. discriminate.
+    + simpl. intros H.
+      (* stuck... *)
+
+(** Unfortunately, we are stuck here: our induction hypothesis talks
+    about [S k], while we need it to talk about [k]! This happens
+    because [k] was introduced at the beginning of our proof, which
+    made our induction hypothesis too specific. We can fix this by
+    avoiding introducing [k], or simply by putting it back in the goal
+    before calling [induction], with the [revert] tactic.
+
+
+    New Tactic
+    ----------
+
+    - [revert]: The opposite of [intros]; removes variables and
+      hypotheses from the context, putting them back in the goal. *)
+
+Restart.
+  intros m k. revert k.
   induction m as [|m IH].
   - intros k. destruct k as [|].
     + reflexivity.
