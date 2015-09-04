@@ -717,6 +717,7 @@ Proof.
   intros T l.
   unfold tr_rev.
   rewrite tr_rev_aux_correct.
+  SearchAbout (_ ++ []).
   apply app_nil_r.
 Qed.
 
