@@ -13,7 +13,10 @@ Require Import Psatz.
 
     We use Coq's [Section] mechanism to state our definitions within
     the scope of common parameters. This makes our notation lighter by
-    avoiding having to redeclare these arguments in all definitions.
+    avoiding having to redeclare these arguments in all
+    definitions. The [Variable] and [Hypothesis] keywords introduce
+    assumptions in our context that are in scope in the entire
+    [Section] declaration.
 
     Our definitions are parameterized by a type [A] and a comparison
     function [comp] between elements of [A]. The [comparison] type is
@@ -28,24 +31,26 @@ Variable comp : A -> A -> comparison.
 
 Hypothesis comp_opp :
   forall x y, comp x y = CompOpp (comp y x).
-Hypothesis comp_refl_iff :
-  forall x y, comp x y = Eq <-> x = y.
 Hypothesis comp_trans :
   forall x y z, comp x y = Lt ->
                 comp y z = Lt ->
                 comp x z = Lt.
 
-(* Exercise *)
-Lemma comp_refl : forall x, comp x x = Eq.
-Proof.
-  intros x.
-  apply comp_refl_iff.
-  reflexivity.
-Qed.
+(** [A <-> B] ("A if and only if B") states that [A] and [B] are
+    _logically equivalent_, i.e., that [A] implies [B] and [B] implies
+    [A]. It can be applied in either direction with the [apply]
+    tactic. It can also be rewritten with [rewrite]. *)
 
-(** Red-black trees are binary trees that contain elements of [A] on
-    their internal nodes, and such that every internal node is colored
-    with either [Red] or [Black]. *)
+Hypothesis comp_refl_iff :
+  forall x y, comp x y = Eq <-> x = y.
+
+(* Exercise: *)
+Lemma comp_refl : forall x, comp x x = Eq.
+Proof. Admitted.
+
+(** Red-black trees are binary search trees that contain elements of
+    [A] on their internal nodes, and such that every internal node is
+    colored with either [Red] or [Black]. *)
 
 Inductive color := Red | Black.
 
@@ -82,13 +87,18 @@ Fixpoint all (f : A -> bool) (t : tree) : bool :=
 
 (** We can now state the familiar binary-tree search invariant: Each
     element [x] on an internal node is strictly greater than those to
-    its left, and strictly smaller than those to its right. *)
+    its left, and strictly smaller than those to its right. We use an
+    auxiliary function [ltb] that tests whether an element [x : A] is
+    smaller than some [y : A] with the [comp] function. *)
 
 Definition ltb x y :=
   match comp x y with
   | Lt => true
   | _ => false
   end.
+
+(** The invariant is then expressed with a simple recursive function
+    that combines [all] and [ltb] above. *)
 
 Fixpoint search_tree (t : tree) : bool :=
   match t with
@@ -101,7 +111,9 @@ Fixpoint search_tree (t : tree) : bool :=
   end.
 
 (** The specification of [member] is given in terms of a function
-    [occurs] that looks for an element [x] on all nodes of a tree [t]. *)
+    [occurs] that looks for an element [x] on all nodes of a tree
+    [t]. The [eqb] function, as its name suggests, tests two elements
+    for equality. *)
 
 Definition eqb x y :=
   match comp x y with
@@ -115,40 +127,61 @@ Fixpoint occurs (x : A) (t : tree) : bool :=
   | Node _ t1 y t2 => occurs x t1 || eqb x y || occurs x t2
   end.
 
-(* Exercise? *)
 Lemma all_weaken :
   forall f g,
     (forall x, f x = true -> g x = true) ->
     forall t, all f t = true -> all g t = true.
 Proof.
   intros f g Hfg t.
-  induction t as [|c t1 IH1 x t2 IH2]; simpl; trivial.
-  intros H.
-  repeat rewrite Bool.andb_true_iff in H.
-  destruct H as [[H1 H2] H3].
-  rewrite IH1; trivial.
-  rewrite IH2; trivial.
-  rewrite Hfg; trivial.
+
+(** New tactic
+    ----------
+
+    - [trivial]: solves simple goals through [reflexivity] and by
+      looking for assumptions in the context that apply directly. If
+      it cannot solve the goal, it does nothing. *)
+
+  induction t as [|c t1 IH1 x t2 IH2].
+  - trivial.
+  - simpl. intros H.
+
+(** Often, [destruct] generates many easy subgoals that can be readily
+    solved. To make this more convenient, we can use the [;] tactic
+    operator. An expression such as [foo; bar] first calls [foo], then
+    calls [bar] on all generated subgoals. A common idiom is [foo;
+    trivial], which solves the trivial subgoals and does nothing on
+    the remaining ones.
+
+
+    New Tactics
+    -----------
+
+    - [try]: Calling [try foo] tries to execute [foo], doing nothing
+      if [foo] raises any errors. In particular, if [foo] is a
+      _terminating tactic_ such as [discriminate], [try foo] attempts
+      to solve the goal, and does nothing if it fails.
+
+    - [destruct ... eqn: ...]: Do case analysis on an expression while
+      generating an equation. *)
+
+    destruct (all f t1) eqn:H1; try discriminate.
+    destruct (f x) eqn:H2; try discriminate.
+    destruct (all f t1) eqn:H3; try discriminate.
+    rewrite IH1; trivial.
+    rewrite Hfg; trivial.
+    rewrite IH2; trivial.
 Qed.
 
+(* Exercise: *)
 Lemma none_occurs :
-  forall x f t,
+  forall (x : A) (f : A -> bool) (t : tree),
     f x = false ->
     all f t = true ->
     occurs x t = false.
-Proof.
-  intros x f t Hfx.
-  induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
-  rewrite Bool.andb_true_iff, Bool.andb_true_iff.
-  intros [[H1 H2] H3].
-  rewrite IH1; trivial. simpl.
-  rewrite IH2; trivial.
-  unfold eqb.
-  destruct (comp x y) eqn:Hxy; trivial.
-  apply comp_refl_iff in Hxy.
-  rewrite <- Hxy, Hfx in H2.
-  congruence.
-Qed.
+Proof. (* fill in here *) Admitted.
+
+(** With these results, we are ready to prove the correctness of the
+    membership testing algorithm. *)
 
 Lemma member_correct :
   forall x t,
@@ -157,13 +190,30 @@ Lemma member_correct :
 Proof.
   intros x t.
   induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
-  repeat rewrite Bool.andb_true_iff.
-  intros [[[H1 H2] H3] H4].
+  intros H.
+  destruct (all (fun z => ltb z y) t1) eqn:H1; try discriminate.
+  destruct (all (ltb y) t2) eqn:H2; try discriminate.
+  destruct (search_tree t1) eqn:H3; try discriminate.
+  destruct (search_tree t2) eqn:H4; try discriminate.
   unfold eqb.
   rewrite IH1; trivial.
   rewrite IH2; trivial.
+
+(** We often want to introduce new facts in our context. This can be
+    done with the [assert] tactic.
+
+    New Tactics
+    -----------
+
+    - [assert]: Introduce a new hypothesis in the context, requiring
+      us to prove that it holds. *)
+
   assert (Hx : ltb x x = false).
   { unfold ltb. rewrite comp_refl. reflexivity. }
+
+(** The curly braces [{}] allow us to focus on the current subgoal,
+    like [+] and [-]. *)
+
   destruct (comp x y) eqn:Hxy.
   - rewrite Bool.orb_true_r. reflexivity.
   - assert (H2' : all (ltb x) t2 = true).
@@ -188,6 +238,12 @@ Proof.
     reflexivity.
 Qed.
 
+(** We now turn our attention to the red-black invariant. A red-black
+    tree is _valid_ if (1) all paths from the root of the tree to its
+    leaves go through the same number of black nodes, and (2) if red
+    nodes only have black children (we stipulate that the leaves of
+    the tree are black). We begin by formalizing (2). *)
+
 Definition tree_color (t : tree) : color :=
   match t with
   | Leaf => Black
@@ -208,6 +264,11 @@ Fixpoint well_colored (t : tree) : bool :=
     colors_ok && well_colored t1 && well_colored t2
   end.
 
+(** The [black_height] function computes the number of black nodes on
+    the path to the left-most leaf of the tree. It is used in the
+    [height_ok] function, which ensures that _all_ paths have the same
+    number of black nodes. *)
+
 Fixpoint black_height (t : tree) : nat :=
   match t with
   | Leaf => 0
@@ -227,6 +288,12 @@ Fixpoint height_ok (t : tree) : bool :=
 Definition is_red_black (t : tree) : bool :=
   well_colored t && height_ok t.
 
+(** The red-black invariant is important because it implies that the
+    height of the tree is logarithmic on the number of nodes. We will
+    now see how to formally show that this is the case. We begin by
+    defining a function [size] for computing various metrics about our
+    trees: *)
+
 Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
   match t with
   | Leaf => 0
@@ -236,7 +303,10 @@ Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
 (** Note that [size plus] computes the number of elements stored in
     the tree. [size max] computes the height of the tree, whereas
     [size min] computes the length of the shortest path from the root
-    of the tree to a leaf. *)
+    of the tree to a leaf.
+
+    As a warm-up exercise, let's show that the black height of a tree
+    is a lower bound on the length of its minimal path: *)
 
 Lemma size_min_black_height :
   forall t,
@@ -245,14 +315,41 @@ Lemma size_min_black_height :
 Proof.
   intros t.
   induction t as [|c t1 IH1 x t2 IH2].
-  + simpl. lia. (* Talk about lia? *)
+
+  + simpl.
+
+(** To facilitate low-level arithmetic reasoning, we can use the [lia]
+    tactic.
+
+    New Tactics
+    -----------
+
+    - [lia]: Short for "Linear Integer Arithmetic"; tries to solve
+      goals that involve linear systems of inequalites on integers. *)
+
+  lia.
+
   + simpl.
     destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
     rewrite beq_nat_true_iff in e12.
-    destruct (height_ok t1); simpl; trivial. (* Talk about semicolons? *)
+    destruct (height_ok t1); simpl; trivial.
     destruct (height_ok t2); simpl; trivial.
     destruct c; lia.
 Qed.
+
+(** We now need to relate the black height of a tree to its total
+    height, by proving the following fact: *)
+
+Lemma size_max_black_height :
+  forall t,
+    if is_red_black t then size max t <= 2 * black_height t + 1
+    else True.
+Proof. (* stuck ... *) Abort.
+
+(** Unfortunately, this won't work. We need to reason about the
+    coloring properties of red-black trees, and show the following
+    slightly stronger statement, which gives an improved bound for
+    black trees. *)
 
 Lemma size_max_black_height :
   forall t,
@@ -267,15 +364,7 @@ Proof.
   induction t as [|c t1 IH1 x t2 IH2]; simpl.
   - lia.
   - destruct c.
-    + destruct (tree_color t1); simpl; trivial.
-      destruct (tree_color t2); simpl; trivial.
-      destruct (well_colored t1); simpl; trivial.
-      destruct (well_colored t2); simpl; trivial.
-      destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
-      rewrite beq_nat_true_iff in e12.
-      destruct (height_ok t1); simpl; trivial.
-      destruct (height_ok t2); simpl; trivial.
-      simpl in *. lia.
+    + admit. (* fill in here *)
     + destruct (well_colored t1); simpl; trivial.
       destruct (well_colored t2); simpl; trivial.
       destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
@@ -289,22 +378,20 @@ Proof.
       lia.
 Qed.
 
+(** Exercise: Prove the following result using the previous two lemmas
+    relating the height of the tree to the length of its mininal
+    path. *)
+
 Lemma size_max_size_min :
   forall t,
     if is_red_black t then size max t <= 2 * size min t + 1
     else True.
-Proof.
-  intros t.
-  assert (Hmax := size_max_black_height t).
-  assert (Hmin := size_min_black_height t).
-  unfold is_red_black in *.
-  destruct (well_colored t); trivial.
-  destruct (height_ok t); trivial.
-  simpl in *.
-  assert (Hmax' : size max t <= 2 * black_height t + 1).
-  { destruct (tree_color t); lia. }
-  lia.
-Qed.
+Proof. (* fill in here *) Admitted.
+
+(** The previous lemma implies that the tree is well-balanced thanks
+    to the following fact, which shows that the number of elements
+    stored in a tree is exponential in the length of the minimal path:
+    *)
 
 Lemma size_min_size_plus :
   forall t,
@@ -322,6 +409,7 @@ Proof.
     lia.
 Qed.
 
+(** Insertion *)
 
 Definition balance_black_left tl x tr : tree :=
   match tl, x, tr with
