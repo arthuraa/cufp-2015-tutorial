@@ -13,7 +13,10 @@ Require Import Psatz.
 
     We use Coq's [Section] mechanism to state our definitions within
     the scope of common parameters. This makes our notation lighter by
-    avoiding having to redeclare these arguments in all definitions.
+    avoiding having to redeclare these arguments in all
+    definitions. The [Variable] and [Hypothesis] keywords introduce
+    assumptions in our context that are in scope in the entire
+    [Section] declaration.
 
     Our definitions are parameterized by a type [A] and a comparison
     function [comp] between elements of [A]. The [comparison] type is
@@ -28,24 +31,26 @@ Variable comp : A -> A -> comparison.
 
 Hypothesis comp_opp :
   forall x y, comp x y = CompOpp (comp y x).
-Hypothesis comp_refl_iff :
-  forall x y, comp x y = Eq <-> x = y.
 Hypothesis comp_trans :
   forall x y z, comp x y = Lt ->
                 comp y z = Lt ->
                 comp x z = Lt.
 
-(* Exercise *)
-Lemma comp_refl : forall x, comp x x = Eq.
-Proof.
-  intros x.
-  apply comp_refl_iff.
-  reflexivity.
-Qed.
+(** [A <-> B] ("A if and only if B") states that [A] and [B] are
+    _logically equivalent_, i.e., that [A] implies [B] and [B] implies
+    [A]. It can be applied in either direction with the [apply]
+    tactic. It can also be rewritten with [rewrite]. *)
 
-(** Red-black trees are binary trees that contain elements of [A] on
-    their internal nodes, and such that every internal node is colored
-    with either [Red] or [Black]. *)
+Hypothesis comp_refl_iff :
+  forall x y, comp x y = Eq <-> x = y.
+
+(* Exercise: *)
+Lemma comp_refl : forall x, comp x x = Eq.
+Proof. Admitted.
+
+(** Red-black trees are binary search trees that contain elements of
+    [A] on their internal nodes, and such that every internal node is
+    colored with either [Red] or [Black]. *)
 
 Inductive color := Red | Black.
 
@@ -82,13 +87,18 @@ Fixpoint all (f : A -> bool) (t : tree) : bool :=
 
 (** We can now state the familiar binary-tree search invariant: Each
     element [x] on an internal node is strictly greater than those to
-    its left, and strictly smaller than those to its right. *)
+    its left, and strictly smaller than those to its right. We use an
+    auxiliary function [ltb] that tests whether an element [x : A] is
+    smaller than some [y : A] with the [comp] function. *)
 
 Definition ltb x y :=
   match comp x y with
   | Lt => true
   | _ => false
   end.
+
+(** The invariant is then expressed with a simple recursive function
+    that combines [all] and [ltb] above. *)
 
 Fixpoint search_tree (t : tree) : bool :=
   match t with
@@ -101,7 +111,9 @@ Fixpoint search_tree (t : tree) : bool :=
   end.
 
 (** The specification of [member] is given in terms of a function
-    [occurs] that looks for an element [x] on all nodes of a tree [t]. *)
+    [occurs] that looks for an element [x] on all nodes of a tree
+    [t]. The [eqb] function, as its name suggests, tests two elements
+    for equality. *)
 
 Definition eqb x y :=
   match comp x y with
@@ -115,22 +127,52 @@ Fixpoint occurs (x : A) (t : tree) : bool :=
   | Node _ t1 y t2 => occurs x t1 || eqb x y || occurs x t2
   end.
 
-(* Exercise? *)
 Lemma all_weaken :
   forall f g,
     (forall x, f x = true -> g x = true) ->
     forall t, all f t = true -> all g t = true.
 Proof.
   intros f g Hfg t.
-  induction t as [|c t1 IH1 x t2 IH2]; simpl; trivial.
-  intros H.
-  repeat rewrite Bool.andb_true_iff in H.
-  destruct H as [[H1 H2] H3].
-  rewrite IH1; trivial.
-  rewrite IH2; trivial.
-  rewrite Hfg; trivial.
+
+(** New tactic
+    ----------
+
+    - [trivial]: solves simple goals through [reflexivity] and by
+      looking for assumptions in the context that apply directly. If
+      it cannot solve the goal, it does nothing. *)
+
+  induction t as [|c t1 IH1 x t2 IH2].
+  - trivial.
+  - simpl. intros H.
+
+(** Often, [destruct] generates many easy subgoals that can be readily
+    solved. To make this more convenient, we can use the [;] tactic
+    operator. An expression such as [foo; bar] first calls [foo], then
+    calls [bar] on all generated subgoals. A common idiom is [foo;
+    trivial], which solves the trivial subgoals and does nothing on
+    the remaining ones.
+
+
+    New Tactics
+    -----------
+
+    - [try]: Calling [try foo] tries to execute [foo], doing nothing
+      if [foo] raises any errors. In particular, if [foo] is a
+      _terminating tactic_ such as [discriminate], [try foo] attempts
+      to solve the goal, and does nothing if it fails.
+
+    - [destruct ... eqn: ...]: Do case analysis on an expression while
+      generating an equation. *)
+
+    destruct (all f t1) eqn:H1; try discriminate.
+    destruct (f x) eqn:H2; try discriminate.
+    destruct (all f t1) eqn:H3; try discriminate.
+    rewrite IH1; trivial.
+    rewrite Hfg; trivial.
+    rewrite IH2; trivial.
 Qed.
 
+(* Exercise? *)
 Lemma none_occurs :
   forall x f t,
     f x = false ->
