@@ -1,5 +1,5 @@
 (* ###################################################################### *)
-(** * Syntax *)
+(** * Proofs and Programs *)
 
 (** Everything in Coq is built from scratch -- even booleans!
     Fortunately, they are already provided by the Coq standard
@@ -86,6 +86,11 @@ Proof.
   reflexivity. (* solve for x = x *)
 Qed.
 
+(** Exercise: Prove this. *)
+Theorem orb_true_l :
+  forall b, orb true b = true.
+Proof. (* Fill in here *) Admitted.
+
 (** Some proofs require case analysis. In Coq, this is done with the
     [destruct] tactic.
 
@@ -127,7 +132,6 @@ Proof.
     - simpl. reflexivity.
     - simpl. reflexivity.
 Qed.
-
 
 (** Exercise: Show that false is an identity element for xor -- that
     is, [xor false b] is equal to [b] *)
@@ -455,15 +459,16 @@ Qed.
 (** The other direction requires us to reason about _contradictory_
     hypotheses. Whenever we have a hypothesis that equates two
     expressions that start with different constructors, we can use the
-    [inversion] tactic to prune that subgoal.
+    [discriminate] tactic to prune that subgoal.
+
+    This is a particular case of what is known as _the principle of
+    explosion_, which states that a contradiction implies anything.
 
     New tactics
     -----------
 
-    - [inversion]: If hypothesis [H] states that [e1 = e2], where [e1]
-      and [e2] are expressions that start with different
-      constructors, than [inversion H] completes the current subgoal.
-
+    - [discriminate]: Looks for an equation between terms starting
+      with different constructors, and solves the current goal.
 *)
 
 Lemma eq_beq_nat :
@@ -473,18 +478,34 @@ Proof.
   induction m as [|m IH].
   - intros k. destruct k as [|].
     + reflexivity.
-    + simpl. intros H. inversion H.
+    + simpl. intros H. discriminate.
   - intros k. destruct k as [|k].
-    + simpl. intros H. inversion H.
+    + simpl. intros H. discriminate.
     + simpl. intros H.
-(*      apply IH in H. *)
+      apply IH in H.
+      rewrite H.
+      reflexivity.
+Qed.
+
+(** (Alternatively, we can also rewrite with [IH] while specifying
+    which value of [n] to use (in this case, [k]) by writing [IH k].)
+    *)
+
+Lemma eq_beq_nat' :
+  forall m n, beq_nat m n = true -> m = n.
+Proof.
+  intros m.
+  induction m as [|m IH].
+  - intros k. destruct k as [|].
+    + reflexivity.
+    + simpl. intros H. discriminate.
+  - intros k. destruct k as [|k].
+    + simpl. intros H. discriminate.
+    + simpl. intros H.
       rewrite (IH k).
       * reflexivity.
       * apply H.
 Qed.
-
-(** (Notice that we rewrote using [IH] we specified which value of [n]
-    to use (in this case, [k]) by writing [IH k].) *)
 
 (** Exercise: Prove this statement. *)
 
@@ -492,7 +513,6 @@ Lemma plus_eq_0 :
   forall n m,
     n + m = O -> n = O.
 Proof. (* Fill in here *) Admitted.
-
 
 End Nat.
 
@@ -620,21 +640,27 @@ Import ListNotations.
 
 Print rev. (* [C-c C-a C-p] in Proof General *)
 
-(* This is a tail-recursive equivalent that runs in linear time *)
+(** This is a tail-recursive equivalent that runs in linear time. *)
 
-Fixpoint tr_rev' {T} (l acc : list T) : list T :=
+Fixpoint tr_rev_aux {T} (l acc : list T) : list T :=
   match l with
   | [] => acc
-  | x :: l => tr_rev' l (x :: acc)
+  | x :: l => tr_rev_aux l (x :: acc)
   end.
 
-(* Here, acc is an accumulator argument that holds the portion of the
-list that we have reversed so far. Prove that tr_rev is equivalent to
-rev: *)
+Definition tr_rev {T} (l: list T) := tr_rev_aux l [].
 
-Definition tr_rev {T} (l: list T) := tr_rev' l [].
+(** Here, [acc] is an accumulator argument that holds the portion of
+    the list that we have reversed so far. Let's prove that [tr_rev]
+    is equivalent to [rev]. For this we will need another tactic:
 
-(* Tactic unfold *)
+
+    New Tactic
+    ----------
+
+    - [unfold]: Calling [unfold foo] expands the definition of [foo]
+      in the goal.
+*)
 
 Lemma tr_rev_correct_try_one :
   forall T (l : list T),
@@ -647,22 +673,24 @@ Proof.
     reflexivity.
   + simpl.
     (* and now we're stuck... *)
-Admitted.
+Abort.
 
-(* We need an auxiliary lemma to make this go through. We will
-   use the following lemmas from the standard library. *)
+(** The problem is that the result we are trying to prove is not
+    general enough. We will need the following auxiliary lemma: *)
 
-Lemma tr_rev'_correct :
+Lemma tr_rev_aux_correct :
   forall T (l1 l2 : list T),
-    tr_rev' l1 l2 = rev l1 ++ l2.
+    tr_rev_aux l1 l2 = rev l1 ++ l2.
 Proof.
   intros T l1 l2.
   induction l1 as [|x l1 IH].
   - simpl. reflexivity.
   - simpl.
-    (* Our inductive hypothesis is too weak to proceed.
-       We want tr_rev' l1 l2 = rev l1 ++ l2 for all l2 *)
-    (* Let's try again from the start *)
+
+(** Our inductive hypothesis is too weak to proceed. We want
+    [tr_rev_aux l1 l2 = rev l1 ++ l2] for all [l2]. Let's try again
+    from the start. *)
+
 Restart.
   intros T l1. (* Now we don't introduce l2, leaving it general. *)
   induction l1 as [|x l1 IH].
@@ -670,11 +698,17 @@ Restart.
   - intros l2. (* Behold our induction hypothesis! *)
     simpl.
     rewrite IH.
-    SearchAbout (_ ++ _ ++ _). (* [C-c C-a C-a] in Proof General *)
+
+(** We can use the [SearchAbout] command to look up lemmas that can be
+    used with certain expressions ([C-c C-a C-a] in Proof General). *)
+
+    SearchAbout (_ ++ _ ++ _).
     rewrite <- app_assoc.
     simpl.
     reflexivity.
 Qed.
+
+(** Our result follows easily: *)
 
 Lemma tr_rev_correct :
   forall T (l : list T),
@@ -682,11 +716,8 @@ Lemma tr_rev_correct :
 Proof.
   intros T l.
   unfold tr_rev.
-  induction l as [| h t IH].
-  + simpl.
-    reflexivity.
-  + simpl.
-    apply tr_rev'_correct.
+  rewrite tr_rev_aux_correct.
+  apply app_nil_r.
 Qed.
 
 (* ###################################################################### *)
