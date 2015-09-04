@@ -174,23 +174,14 @@ Qed.
 
 (* Exercise? *)
 Lemma none_occurs :
-  forall x f t,
+  forall (x : A) (f : A -> bool) (t : tree),
     f x = false ->
     all f t = true ->
     occurs x t = false.
-Proof.
-  intros x f t Hfx.
-  induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
-  rewrite Bool.andb_true_iff, Bool.andb_true_iff.
-  intros [[H1 H2] H3].
-  rewrite IH1; trivial. simpl.
-  rewrite IH2; trivial.
-  unfold eqb.
-  destruct (comp x y) eqn:Hxy; trivial.
-  apply comp_refl_iff in Hxy.
-  rewrite <- Hxy, Hfx in H2.
-  congruence.
-Qed.
+Proof. (* fill in here *) Admitted.
+
+(** With these results, we are ready to prove the correctness of the
+    membership testing algorithm. *)
 
 Lemma member_correct :
   forall x t,
@@ -199,13 +190,30 @@ Lemma member_correct :
 Proof.
   intros x t.
   induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
-  repeat rewrite Bool.andb_true_iff.
-  intros [[[H1 H2] H3] H4].
+  intros H.
+  destruct (all (fun z => ltb z y) t1) eqn:H1; try discriminate.
+  destruct (all (ltb y) t2) eqn:H2; try discriminate.
+  destruct (search_tree t1) eqn:H3; try discriminate.
+  destruct (search_tree t2) eqn:H4; try discriminate.
   unfold eqb.
   rewrite IH1; trivial.
   rewrite IH2; trivial.
+
+(** We often want to introduce new facts in our context. This can be
+    done with the [assert] tactic.
+
+    New Tactics
+    -----------
+
+    - [assert]: Introduce a new hypothesis in the context, requiring
+      us to prove that it holds. *)
+
   assert (Hx : ltb x x = false).
   { unfold ltb. rewrite comp_refl. reflexivity. }
+
+(** The curly braces [{}] allow us to focus on the current subgoal,
+    like [+] and [-]. *)
+
   destruct (comp x y) eqn:Hxy.
   - rewrite Bool.orb_true_r. reflexivity.
   - assert (H2' : all (ltb x) t2 = true).
