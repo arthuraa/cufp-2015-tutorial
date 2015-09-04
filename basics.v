@@ -509,7 +509,7 @@ Proof.
 Restart.
   intros m k. revert k.
   induction m as [|m IH].
-  - intros k. destruct k as [|].
+  - intros k. destruct k as [|k].
     + reflexivity.
     + simpl. intros H. discriminate.
   - intros k. destruct k as [|k].
