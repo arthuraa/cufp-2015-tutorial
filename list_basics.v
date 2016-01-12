@@ -1,4 +1,223 @@
 (* ###################################################################### *)
+(** * Proofs and Programs *)
+
+(** Everything in Coq is built from scratch -- even booleans!
+    Fortunately, they are already provided by the Coq standard
+    library, but we'll review their definition here to get familiar
+    with the basic features of the system.
+
+    [Inductive] is Coq's way of defining an algebraic datatype.  Its
+    syntax is similar to OCaml's ([type]) or Haskell's ([data]). Here,
+    we define [bool] as a simple algebraic datatype. *)
+
+Module Bool.
+
+Inductive bool : Type :=
+| true : bool
+| false : bool.
+
+(** Exercise: Define a three-valued data type, representing ternary
+    logic.  Here something can be true, false and unknown. *)
+
+(* 30 seconds *)
+Inductive trivalue : Type :=
+  (* Fill in here *).
+
+(** We can write functions that operate on [bool]s by simple pattern
+    matching, using the [match] keyword. *)
+
+Definition negb (b:bool) : bool :=
+  match b with
+  | true => false
+  | false => true
+  end.
+
+(** We can pattern-match on multiple arguments simultaneously, and
+    also use "_" as a wildcard pattern. *)
+
+Definition orb (b1 b2: bool) : bool :=
+  match b1, b2 with
+  | false, false => false
+  | _, _ => true
+  end.
+
+Print orb.
+
+(** We can also use an If statement, which matches on the first constructor of
+    any two-constructor datatype, in our definition. *)
+
+Definition andb (b1 b2: bool) : bool := if b1 then b2 else false.
+
+(** Let's test our functions. The [Compute] command tells Coq to
+    evaluate an expression and print the result on the screen.*)
+
+Compute (negb true).
+Compute (orb true false).
+Compute (andb true false).
+
+(** Exercise: Define xor (exclusive or) . *)
+
+(* 30 seconds *)
+Definition xorb (b1 b2 : bool) : bool :=
+  true (* Change this! *).
+
+
+Compute (xorb true true).
+
+
+(** What makes Coq different from normal functional programming
+    languages is that it allows us to formally _prove_ that our
+    programs satisfy certain properties. The system mechanically
+    verifies these proofs to ensure that they are correct.
+
+    We use [Lemma], [Theorem] and [Example] to write logical
+    statements. Coq requires us to prove these statements using
+    _tactics_, which are commands that manipulate formulas using basic
+    logic rules. Here's an example showing some basic tactics in
+    action.
+
+
+    New tactics
+    -----------
+
+    - [intros]: Introduce variables into the context, giving them
+      names.
+
+    - [simpl]: Simplify the goal.
+
+    - [reflexivity]: Prove that some expression [x] is equal to itself. *)
+
+Example andb_false_l : forall b, andb false b = false.
+Proof.
+  intros b. (* introduce the variable b *)
+  simpl. (* simplify the expression *)
+  reflexivity. (* solve for x = x *)
+Qed.
+
+(* 30 seconds *)
+(** Exercise: Prove this. *)
+Theorem orb_true_l :
+  forall b, orb true b = true.
+Proof. (* Fill in here *) Admitted.
+
+(** Some proofs require case analysis. In Coq, this is done with the
+    [destruct] tactic.
+
+
+    New tactics
+    -----------
+
+    - [destruct]: Consider all possible constructors of an inductive
+      data type, generating subgoals that need to be solved
+      separately.
+
+
+    Here's an example of [destruct] in action. *)
+
+Lemma orb_true_r : forall b : bool, orb b true = true.
+(* Here we explicitly annotate b with its type, even though Coq could infer it. *)
+Proof.
+  intros b.
+  simpl. (* This doesn't do anything, since orb pattern matches on the
+  first variable first. *)
+  destruct b. (* Do case analysis on b *)
+  + (* We use the "bullets" '+' '-' and '*' to delimit subgoals *)
+    (* true case *)
+    simpl.
+    reflexivity.
+  + (* false case *)
+    simpl.
+    reflexivity.
+Qed.
+
+(** We can call [destruct] as many times as we want, generating deeper subgoals. *)
+
+Theorem andb_commutative : forall b1 b2 : bool, andb b1 b2 = andb b2 b1.
+Proof.
+  intros b1 b2.
+  destruct b1.
+  + destruct b2.
+    - simpl. reflexivity.
+    - simpl. reflexivity. (* bullets need to be consistent *)
+
+(** Alternatively, if all the subgoals are solved the same way, we can
+    use the [;] operator to execute a tactic on _all_ the generated
+    subgoals, like this: *)
+
+  + destruct b2; simpl; reflexivity.
+Qed.
+
+(** Exercise: Show that false is an identity element for xor -- that
+    is, [xor false b] is equal to [b] *)
+
+
+(* 1 minute *)
+(* Exercise: Show that b AND false is always false  *)
+Theorem andb_false_r : False. (* Replace [False] with claim. *)
+Proof.
+Admitted.
+
+(* Exercise: Show that b xor (not b) is always true. *)
+Theorem xorb_b_neg_b : False. (* Replace [False] with claim. *)
+Proof.
+Admitted. (* fill in proof *)
+
+(** NB: Admitted allows us to proceed without completing our proof.
+
+    Sometimes, we want to show a result that requires hypotheses. In
+    Coq, [P -> Q] means that [P] implies [Q], or that [Q] is true
+    whenever [P] is. We can use [->] multiple times to express that
+    more than one hypothesis are needed; the syntax is similar to how
+    we write multiple-argument functions in OCaml or Haskell. For
+    example: *)
+
+Theorem rewrite_example : forall b1 b2 b3 b4,
+  b1 = b4 ->
+  b2 = b3 ->
+  andb b1 b2 = andb b3 b4.
+
+(** We can use the [intros] tactic to give hypotheses names, bringing
+    them into the proof context. *)
+
+Proof.
+  intros b1 b2 b3 b4 eq14 eq23.
+
+(** Now, our context has two hypotheses: [eq14], which states that [b1
+    = b4], and [eq23], stating that [b2 = b3].
+
+    Here are some tactics for using hypotheses and previously proved
+    results:
+
+
+    New tactics
+    -----------
+
+    - [rewrite]: Replace one side of an equation by the other.
+
+    - [apply]: Suppose that the current goal is [Q]. If [H : Q], then
+      [apply H] solves the goal. If [H : P -> Q], then [apply H]
+      replaces [Q] by [P] in the goal. If [H] has multiple hypotheses,
+      [H : P1 -> P2 -> ... -> Pn -> Q], then [apply H] generates one
+      subgoal for each [Pi]. *)
+
+  rewrite eq14. (* replace b1 with b4 in the goal *)
+  rewrite <- eq23. (* replace b3 with b2 in the goal. *)
+  apply andb_commutative. (* solve using our earlier theorem *)
+Qed.
+
+
+(* 30 seconds *)
+(** Exercise: Show that if [b1 = b2] then [xorb b1 b2] is equal to
+    [false] *)
+
+Theorem xorb_same : False. (* Replace [False] by claim *)
+Proof.
+  Admitted. (* fill in proof *)
+
+End Bool.
+
+
+(* ###################################################################### *)
 
 (* We will use the following option to make use of polymorphism
    more convenient. *)
@@ -136,7 +355,7 @@ Qed.
 (** Take-home exericse: Try to do induction on [l2] and [l3] in the
     above proof, and see where it fails. *)
 
-(* 30 seconds *)
+(* 60 seconds *)
 (* Exercise: Prove that [snoc l x] is equivalent to 
    appending [x] to the end of [l]. *)
 
@@ -145,16 +364,38 @@ Proof.
   (* Fill in here *)
 Admitted.
 
+(** The natural numbers are defined in Coq's standard library as follows:
 
-(* Let's define the length function *)
+    Inductive nat : Type := 
+      | O : nat 
+      | S : nat -> nat.
+
+    where [S] stands for "Successor".
+
+    Coq prints [S (S (S O))] as "3", as you might expect. 
+
+*) 
+
+Set Printing All.
+
+Check 0.
+Check 2.
+Check 2 + 2.
+
+Unset Printing All.        
+
+Check S (S (S O)).
+Check 2 + 3.
+Compute 2 + 3.
+
+(* Now we can define the length function *)
 
 Fixpoint length T (l : list T) :=
   match l with
   | [] => 0
-  | h :: t => 1 + length t  
+  | h :: t => 1 + length t
   end.
 
-Compute (fun n => 1 + n).
 Compute length [1; 1; 1].
 
 (* 90 seconds *)
@@ -163,14 +404,8 @@ Compute length [1; 1; 1].
 Lemma app_length : forall T (l1 l2 : list T),
   length (l1 ++ l2) = length l1 + length l2.
 Proof.
-  intros T l1 l2.
-  induction l1.
-  + simpl.
-    reflexivity.
-  + simpl.
-    rewrite IHl1.
-    reflexivity.
-Qed.
+  (* Fill in here *)
+Admitted.
 
 
 (** Often we find ourselves needing to reason about _contradictory_
@@ -205,46 +440,39 @@ Proof.
 Qed.
     
 
+(* 30 seconds *)
 (* Exercise: Prove the same about l2. *)
 
 Lemma plus_nil_r : forall T (l1 l2 : list T),
   l1 ++ l2 = [] -> l2 = [].
 Proof.
-  intros T l1 l2 H.
-  destruct l1 as [| h t].
-  + (* [] *)
-    simpl in H.
-    apply H.
-  + (* h :: t *)  
-    simpl in H.
-    discriminate.
-Qed.
+  (* Fill in here *)
+Admitted.
 
-(* Other approaches *)
 
-Lemma plus_nil_r' : forall T (l1 l2 : list T),
-  l1 ++ l2 = [] -> l2 = [].
-Proof.
-  intros T l1 l2 H.
-  destruct l2 as [| h t].
-  + (* [] *)
-    reflexivity.
-  + (* h :: t *)  
-    destruct l1; simpl in H; discriminate.
-Qed.
+Fail Fixpoint shuffle T (l1 l2 : list T) :=
+  match l1 with
+    | [] => l2
+    | h :: t => h :: shuffle l2 t
+  end.
 
-Lemma plus_nil_r_trick : forall T (l1 l2 : list T),
-  l1 ++ l2 = [] -> l2 = [].
-Proof.
-  intros T l1 l2 H.
-  assert (H1 : l1 = []).
-    apply (plus_nil_l l1 l2).
-    apply H.
-  rewrite H1 in H.
-  simpl in H.
-  apply H.
-Qed.
+(** The [Fail] keyword instructs Coq to ignore a command when it
+    fails, but to fail if the command succeeds. It is useful for
+    showing certain pieces of code that are not accepted by the
+    language.
 
+    In this case, we can rewrite [shuffle] so that it is accepted by Coq's
+    termination checker: *)
+
+Fixpoint shuffle T (l1 l2 : list T) :=
+  match l1, l2 with
+    | h1 :: t1, h2 :: t2 => h1 :: h2 :: shuffle t1 t2
+    | [], _ => l2
+    | _, [] => l1
+  end.
+
+
+Print shuffle.
 
 
 (** Let's define list reversal function and prove some of its
@@ -362,3 +590,27 @@ Proof.
   apply app_nil_r.
 Qed.
 
+End List.
+
+
+(** You may have noticed that several of the proofs in this section,
+    particularly regarding the associativity of the append function,
+    closely resemble proofs about arithmetic. You might also be interested
+    in Coq for its ability to prove results in mathematics. The
+    material in this section should be sufficient for you to start
+    formulating theorems about the natural numbers, such as the
+    commutativity, associativity and distributivity of addition and
+    multiplication.
+
+    You might start from the very beginning by defining the natural
+    numbers as follows:
+
+    Inductive nat : Type := 
+      | O : nat 
+      | S : nat -> nat.
+
+    From there you can define +, -, *, /, ^ etc. We encourage you to
+    start on your own, but to help, we've included a module on the
+    natural numbers. We hope you enjoy.
+
+*)

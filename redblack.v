@@ -4,6 +4,8 @@
 Open Scope bool_scope.
 Require Import Coq.Arith.Arith_base.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.Lists.List.
+Import ListNotations.
 Require Import Psatz.
 
 (** We will now see how we can use Coq's language to implement an
@@ -20,23 +22,28 @@ Require Import Psatz.
 
     Our definitions are parameterized by a type [A] and a comparison
     function [comp] between elements of [A]. The [comparison] type is
-    defined in the standard library, and includes the values [Lt],
-    [Gt], and [Eq]. Notice that we state a few hypotheses that are
-    needed for our results to hold. *)
+    defined in the standard library, and consists of the values [Lt],
+    [Gt], and [Eq]. *)
 
 Section RedBlack.
 
 Variable A : Type.
 Variable comp : A -> A -> comparison.
 
-Hypothesis comp_opp :
-  forall x y, comp x y = CompOpp (comp y x).
+(** In order for our definitions to work, we must assume that a few
+    properties hold of the [comp] operator. First, we assume that
+    [comp] is _transitive_: that is, if [x] is less than [y] and [y]
+    is less than [z], then [x] is less than [z]. *)
+
 Hypothesis comp_trans :
   forall x y z, comp x y = Lt ->
                 comp y z = Lt ->
                 comp x z = Lt.
 
-(** [A <-> B] ("A if and only if B") states that [A] and [B] are
+(** Next, we assume that [comp] is reflexive, and that elements that
+    test for [Eq] are equal.
+
+    [A <-> B] ("A if and only if B") states that [A] and [B] are
     _logically equivalent_, i.e., that [A] implies [B] and [B] implies
     [A]. It can be applied in either direction with the [apply]
     tactic. It can also be rewritten with [rewrite]. *)
@@ -48,9 +55,18 @@ Hypothesis comp_refl_iff :
 Lemma comp_refl : forall x, comp x x = Eq.
 Proof. Admitted.
 
+(** Finally, we assume that if [x] is less than [y], then [y] is
+    greater than [x]. *)
+
+Hypothesis comp_opp :
+  forall x y, comp x y = CompOpp (comp y x).
+
 (** Red-black trees are binary search trees that contain elements of
     [A] on their internal nodes, and such that every internal node is
-    colored with either [Red] or [Black]. *)
+    colored with either [Red] or [Black]. The [Leaf] constructor
+    represents an empty tree and [Node c left x right] represents
+    an internal node colored [c], with children [left] and [right],
+    storing element [x : A]. *)
 
 Inductive color := Red | Black.
 
@@ -59,8 +75,8 @@ Inductive tree :=
 | Node : color -> tree -> A -> tree -> tree.
 
 (** Before getting into details about the red-black invariants, we can
-    already define a search algorithm that looks up an element [x] of
-    [A] on a tree. Its definition is standard: *)
+    define a search algorithm that looks up an element [x] of [A] on a
+    tree. *)
 
 Fixpoint member x t : bool :=
   match t with
@@ -73,11 +89,20 @@ Fixpoint member x t : bool :=
     end
   end.
 
+(** Exercise 
+
+    Using the list functions we have already studied, complete the
+    definition of the [elements] function below. Your implementation
+    should perform an inorder traversal of the elements of [t] and
+    accumulate them in a list. *)
+
+Fixpoint elements (t : tree) : list A := []. (* Fill in here *)
+
 (** We want to formulate a specification for our algorithm and prove
-    that this implementation indeed satisfies it. We begin by
-    formalizing what it means for a tree to be a binary search
-    tree. This will require the following higher-order function, which
-    tests whether all elements of a tree [t] satisfy a property [f]: *)
+    that this implementation satisfies it. We begin by formalizing
+    what it means for a tree to be a binary search tree. This will
+    require the following higher-order function, which tests whether
+    all elements of a tree [t] satisfy a property [f]: *)
 
 Fixpoint all (f : A -> bool) (t : tree) : bool :=
   match t with
