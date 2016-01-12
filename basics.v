@@ -219,7 +219,7 @@ End Bool.
 Module Nat.
 
 (* ###################################################################### *)
-(** * Numbers and induction
+(** * Numbers and Induction
 
     Even numbers are not primitive! Luckily, inductive types are all
     we need to define them. Once again, Coq's standard library comes
@@ -382,8 +382,8 @@ Qed.
     explosion_, which states that a contradiction implies anything.
 
 
-    New tactics
-    -----------
+    New Tactic
+    ----------
 
     - [discriminate]: Looks for an equation between terms starting
       with different constructors, and solves the current goal.
