@@ -22,6 +22,7 @@ Inductive bool : Type :=
 (* EX1 (trivalue) *)
 (** Define a three-valued data type, representing ternary logic.  Here
     something can be true, false and unknown. *)
+
 Inductive trivalue : Type :=
 (* SOLUTION *)
 | tv_true
@@ -57,7 +58,11 @@ Print orb.
 (** We can also use an [if] statement, which matches on the first
     constructor of any two-constructor datatype, in our definition. *)
 
-Definition andb (b1 b2: bool) : bool := if b1 then b2 else false.
+Definition andb (b1 b2: bool) : bool :=
+(* FULL *)
+  if b1 then b2 else false.
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 
 (** Let's test our functions. The [Compute] command tells Coq to
     evaluate an expression and print the result on the screen.*)
@@ -66,14 +71,14 @@ Compute (negb true).
 Compute (orb true false).
 Compute (andb true false).
 
-(** Exercise: Define xor (exclusive or) . *)
+(* EX1 (xor) *)
+(** Define xor (exclusive or). *)
 
-(* 30 seconds *)
 Definition xorb (b1 b2 : bool) : bool :=
-  true (* Change this! *).
-
+(* ADMIT *) if b1 then negb b2 else b2. (* /ADMIT *)
 
 Compute (xorb true true).
+(** [] *)
 
 
 (** What makes Coq different from normal functional programming
@@ -105,11 +110,15 @@ Proof.
   reflexivity. (* solve for x = x *)
 Qed.
 
-(* 30 seconds *)
-(** Exercise: Prove this. *)
+(* EX1 (orb_true_l) *)
 Theorem orb_true_l :
   forall b, orb true b = true.
-Proof. (* Fill in here *) Admitted.
+Proof.
+(* ADMITTED *)
+  reflexivity.
+Qed.
+(* /ADMITTED *)
+(** [] *)
 
 (** Some proofs require case analysis. In Coq, this is done with the
     [destruct] tactic.
@@ -128,6 +137,7 @@ Proof. (* Fill in here *) Admitted.
 Lemma orb_true_r : forall b : bool, orb b true = true.
 (* Here we explicitly annotate b with its type, even though Coq could infer it. *)
 Proof.
+(* WORKINCLASS *)
   intros b.
   simpl. (* This doesn't do anything, since orb pattern matches on the
   first variable first. *)
@@ -140,11 +150,13 @@ Proof.
     simpl.
     reflexivity.
 Qed.
+(* /WORKINCLASS *)
 
 (** We can call [destruct] as many times as we want, generating deeper subgoals. *)
 
 Theorem andb_commutative : forall b1 b2 : bool, andb b1 b2 = andb b2 b1.
 Proof.
+(* WORKINCLASS *)
   intros b1 b2.
   destruct b1.
   + destruct b2.
@@ -157,21 +169,37 @@ Proof.
 
   + destruct b2; simpl; reflexivity.
 Qed.
+(* /WORKINCLASS *)
 
-(** Exercise: Show that false is an identity element for xor -- that
-    is, [xor false b] is equal to [b] *)
+(* EX1 (andb_false_r) *)
+(** Show that b AND false is always false  *)
 
-
-(* 1 minute *)
-(* Exercise: Show that b AND false is always false  *)
-Theorem andb_false_r : False. (* Replace [False] with claim. *)
+Theorem andb_false_r :
+(* ADMIT *)
+  forall b, andb b false = false.
+(* /ADMIT *)
 Proof.
-Admitted.
+(* ADMITTED *)
+  intros b. destruct b.
+  + reflexivity.
+  + reflexivity.
+Qed.
+(* /ADMITTED *)
+(** [] *)
 
-(* Exercise: Show that b xor (not b) is always true. *)
-Theorem xorb_b_neg_b : False. (* Replace [False] with claim. *)
+(* EX1 (xorb_b_neg_b) *)
+(** Show that b xor (not b) is always true. *)
+
+Theorem xorb_b_neg_b :
+(* ADMIT *)
+  forall b, xorb b (negb b) = true.
+(* /ADMIT *)
 Proof.
-Admitted. (* fill in proof *)
+(* ADMITTED *)
+  intros b. destruct b.
+  + reflexivity.
+  + reflexivity.
+(* /ADMITTED *)
 
 (** NB: Admitted allows us to proceed without completing our proof.
 
