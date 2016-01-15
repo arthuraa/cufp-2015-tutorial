@@ -8,6 +8,10 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Psatz.
 
+(** (We use the following to hide solutions from exercises.) *)
+
+Axiom admit : forall {T : Type}, T.
+
 (** We will now see how we can use Coq's language to implement an
     interesting functional program: a red-black tree module. Red-black
     trees are binary search trees that use an intricate invariant to
@@ -51,9 +55,13 @@ Hypothesis comp_refl_iff :
     [A]. It can be applied in either direction with the [apply]
     tactic. It can also be rewritten with [rewrite]. *)
 
-(* Exercise: *)
+(** Exercise: *)
 Lemma comp_refl : forall x, comp x x = Eq.
-Proof. Admitted.
+Proof.
+(* ADMITTED *)
+  intros x. rewrite comp_refl_iff. reflexivity.
+Qed.
+(* /ADMITTED *)
 
 (** Finally, we assume that if [x] is less than [y], then [y] is
     greater than [x]. The [CompOpp] function swaps [Lt] and [Gt]. *)
@@ -63,10 +71,9 @@ Hypothesis comp_opp :
 
 (** Red-black trees are binary search trees that contain elements of
     [A] on their internal nodes, and such that every internal node is
-    colored with either [Red] or [Black]. The [Leaf] constructor
-    represents an empty tree and [Node c left x right] represents
-    an internal node colored [c], with children [left] and [right],
-    storing element [x : A]. *)
+    colored with either [Red] or [Black]. [Leaf] represents an empty
+    tree. [Node c left x right] represents an internal node colored
+    [c], with children [left] and [right], storing element [x : A]. *)
 
 Inductive color := Red | Black.
 
@@ -74,9 +81,18 @@ Inductive tree :=
 | Leaf : tree
 | Node : color -> tree -> A -> tree -> tree.
 
-(** Before getting into details about the red-black invariants, we can
-    define a search algorithm that looks up an element [x] of [A] on a
-    tree. *)
+(** Exercise (60s)
+
+    Using the list functions we have already studied, complete the
+    definition of the [elements] function below. Your implementation
+    should perform an inorder traversal of the elements of [t] and
+    accumulate them in a list. *)
+
+Fixpoint elements (t : tree) : list A := []. (* Fill in here *)
+
+(** Before getting into details about the red-black invariants, let's
+    study the following function, which looks up an element [x] of [A]
+    on a tree. *)
 
 Fixpoint member x t : bool :=
   match t with
@@ -89,20 +105,23 @@ Fixpoint member x t : bool :=
     end
   end.
 
-(** Exercise
+(** Exercise (30s)
 
-    Using the list functions we have already studied, complete the
-    definition of the [elements] function below. Your implementation
-    should perform an inorder traversal of the elements of [t] and
-    accumulate them in a list. *)
+    To test your understanding of [member], prove the following
+    result. *)
 
-Fixpoint elements (t : tree) : list A := []. (* Fill in here *)
+Example member_ex :
+  forall x tl y tr,
+    member x tl = true ->
+    comp x y = Lt ->
+    member x (Node Black tl y tr) = true.
+Proof. (* Fill in here *) Admitted.
 
-(** We want to formulate a specification for our algorithm and prove
-    that this implementation satisfies it. We begin by formalizing
-    what it means for a tree to be a binary search tree. This will
-    require the following higher-order function, which tests whether
-    all elements of a tree [t] satisfy a property [f]: *)
+(** We want to formulate a specification for [member] and prove that
+    it is valid. We begin by formalizing what it means for a tree to
+    be a binary search tree. This will require the following function,
+    which tests whether all elements of a tree [t] satisfy a property
+    [f]: *)
 
 Fixpoint all (f : A -> bool) (t : tree) : bool :=
   match t with
