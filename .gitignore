@@ -1,3 +1,5 @@
 *.v.d
 *.vo
 *.glob
+*-short.v
+*-full.v
