@@ -8,7 +8,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Psatz.
 
-(** (We use the following to hide solutions from exercises.) *)
+(** (We use [admit] and [Admitted] to hide solutions from exercises.) *)
 
 Axiom admit : forall {T : Type}, T.
 

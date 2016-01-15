@@ -1,6 +1,10 @@
 (* ###################################################################### *)
 (** * Proofs and Programs *)
 
+(** (We use [admit] and [Admitted] to hide solutions from exercises.) *)
+
+Axiom admit : forall {T}, T.
+
 (** FULL: Everything in Coq is built from scratch -- even booleans!
     Fortunately, they are already provided by the Coq standard
     library, but we'll review their definition here to get familiar
@@ -199,11 +203,10 @@ Proof.
   intros b. destruct b.
   + reflexivity.
   + reflexivity.
+Qed.
 (* /ADMITTED *)
 
-(** NB: Admitted allows us to proceed without completing our proof.
-
-    Sometimes, we want to show a result that requires hypotheses. In
+(** Sometimes, we want to show a result that requires hypotheses. In
     Coq, [P -> Q] means that [P] implies [Q], or that [Q] is true
     whenever [P] is. We can use [->] multiple times to express that
     more than one hypothesis are needed; the syntax is similar to how
@@ -215,16 +218,18 @@ Theorem rewrite_example : forall b1 b2 b3 b4,
   b2 = b3 ->
   andb b1 b2 = andb b3 b4.
 
-(** We can use the [intros] tactic to give hypotheses names, bringing
-    them into the proof context. *)
+(** FULL: We can use the [intros] tactic to give hypotheses names,
+    bringing them into the proof context. *)
 
 Proof.
+(* FULL *)
   intros b1 b2 b3 b4 eq14 eq23.
+(* /FULL *)
 
-(** Now, our context has two hypotheses: [eq14], which states that [b1
-    = b4], and [eq23], stating that [b2 = b3].
+(** FULL: Now, our context has two hypotheses: [eq14], which states
+    that [b1 = b4], and [eq23], stating that [b2 = b3]. *)
 
-    Here are some tactics for using hypotheses and previously proved
+(** Here are some tactics for using hypotheses and previously proved
     results:
 
 
@@ -239,27 +244,39 @@ Proof.
       [H : P1 -> P2 -> ... -> Pn -> Q], then [apply H] generates one
       subgoal for each [Pi]. *)
 
+(* FULL *)
   rewrite eq14. (* replace b1 with b4 in the goal *)
   rewrite <- eq23. (* replace b3 with b2 in the goal. *)
   apply andb_commutative. (* solve using our earlier theorem *)
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 Qed.
 
 
-(* 30 seconds *)
-(** Exercise: Show that if [b1 = b2] then [xorb b1 b2] is equal to
-    [false] *)
+(* EX1 (xorb_same) *)
+(** Show that if [b1 = b2] then [xorb b1 b2] is equal to [false]. *)
 
-Theorem xorb_same : False. (* Replace [False] by claim *)
+Theorem xorb_same :
+(* ADMIT *)
+  forall b1 b2, b1 = b2 -> xorb b1 b2 = false.
+(* /ADMIT *)
 Proof.
-  Admitted. (* fill in proof *)
+(* ADMITTED *)
+  intros b1 b2 e.
+  rewrite e.
+  destruct b2.
+  + reflexivity.
+  + reflexivity.
+Qed.
+(* /ADMITTED *)
 
 End Bool.
 
 
 (* ###################################################################### *)
 
-(* We will use the following option to make use of polymorphism
-   more convenient. *)
+(** We will use the following option to make polymorphism more
+    convenient. *)
 
 Set Implicit Arguments.
 
@@ -280,10 +297,13 @@ Inductive list (T : Type) :=
     Note that we declare the type parameter T. *)
 
 Fixpoint app T (l1 l2 : list T) : list T :=
+(* FULL *)
   match l1 with
   | nil => l2
   | cons h t  => cons h (app t l2)
   end.
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 
 (** Coq comes with a syntax extension mechanism for defining custom
     notations. Without getting into details, here's how we can give
@@ -294,21 +314,21 @@ Notation "[ ]" := (nil _).
 Notation "[ x ; .. ; y ]" := (cons x .. (cons y [] ) ..).
 Notation "l1 ++ l2" := (app l1 l2) (at level 60, right associativity).
 
-(** Since nil can potentially be of any type, we add an underscore to tell Coq
-    to infer the type from the context. *)
+(** Since [nil] can potentially be of any type, we add an underscore
+    to tell Coq to infer the type from the context. *)
 
-(* We can now check the types of expressions involving lists. *)
+(** We can now check the types of expressions involving lists. *)
 
 Check [].
 Check true :: [].
 Check [true ; false].
 Check [true ; false] ++ [false].
 
-(* And compute the last *)
+(** And compute the last. *)
 Compute [true ; false] ++ [false].
 
-
-(* Note that we can define functions using notations *)
+(** Note that we can use define notations and functions
+    simultaneously: *)
 
 Reserved Notation "l1 @ l2" (at level 60).
 Fixpoint app' T (l1 l2 : list T) : list T :=
@@ -320,26 +340,35 @@ Fixpoint app' T (l1 l2 : list T) : list T :=
   where "l1 @ l2" := (app' l1 l2).
 
 
-(* Exercise: Define "snoc", which adds an element to the end of a list. *)
+(* EX1 (snoc) *)
+(** Define [snoc], which adds an element to the end of a list. *)
 
 Fixpoint snoc {T} (l : list T) (x : T) : list T :=
-  [] (* Fill in here *).
+(* ADMIT *)
+  match l with
+  | [] => [x]
+  | h :: t => h :: snoc t x
+  end.
+(* /ADMIT *)
 
-(** It is easy to show that appending nil to the left of a list yields the
-    original list.  *)
+(** It is easy to show that appending [nil] to the left of a list
+    yields the original list.  *)
 
 Lemma app_nil_l: forall T (l : list T), [] ++ l  = l.
 Proof.
+(* WORKINCLASS *)
   intros T l.
   simpl.
   reflexivity.
 Qed.
+(* /WORKINCLASS *)
 
 (** Showing the symmetric result is more difficult
     since it doesn't follow by simplification alone. *)
 
 Lemma app_nil_r: forall T (l : list T), l ++ []  = l.
 Proof.
+(* FULL *)
   intros T l.
   simpl. (* Does nothing *)
   destruct l as [| h t]. (* Notice the [as] clause, which allows us
@@ -347,18 +376,19 @@ Proof.
   + simpl.
     reflexivity.
   + simpl. (* no way to proceed... *)
+(* /FULL *)
 
-(** The problem is that we can only prove the result for [h::t] if we
-    already know that it is valid for [t]. We need a bigger hammer here...
+(** FULL: The problem is that we can only prove the result for [h::t]
+    if we already know that it is valid for [t]. We need a bigger
+    hammer here... *)
 
-
-    New tactic
+(** New tactic
     ----------
 
     - [induction]: Argue by induction. It works as [destruct], but
     additionally giving us an inductive hypothesis in the inductive
     case. *)
-
+(* FULL *)
 Restart.
   intros T l.
   induction l as [| h t IH]. (* Note the additional name [IH], given to our
@@ -369,6 +399,8 @@ Restart.
     rewrite IH.
     reflexivity.
 Qed.
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 
 (** As a rule of thumb, when proving some property of a recursive
     function, it is a good idea to do induction on the recursive
@@ -379,6 +411,7 @@ Lemma app_assoc :
   forall T (l1 l2 l3 : list T),
     l1 ++ (l2 ++ l3) = (l1 ++ l2) ++ l3.
 Proof.
+(* WORKINCLASS *)
   intros T l1 l2 l3.
   induction l1 as [|h1 t1 IH]. (* l1 is the right choice here, since [app] is defined
                                   by recursion on the first argument. *)
@@ -390,18 +423,25 @@ Proof.
     rewrite IH.
     reflexivity.
 Qed.
+(* /WORKINCLASS *)
 
-(** Take-home exericse: Try to do induction on [l2] and [l3] in the
+(** Take-home exercise: Try to do induction on [l2] and [l3] in the
     above proof, and see where it fails. *)
 
-(* 60 seconds *)
-(* Exercise: Prove that [snoc l x] is equivalent to
-   appending [x] to the end of [l]. *)
+(* EX2 (snoc_app) *)
+(** Prove that [snoc l x] is equivalent to appending [x] to the end of
+    [l]. *)
 
 Lemma snoc_app : forall T (l : list T) (x : T), snoc l x = l ++ [x].
 Proof.
-  (* Fill in here *)
-Admitted.
+(* ADMITTED *)
+  intros T l x.
+  induction l as [|h t IH].
+  + reflexivity.
+  + simpl. rewrite IH. reflexivity.
+Qed.
+(* /ADMITTED *)
+(** [] *)
 
 (** The natural numbers are defined in Coq's standard library as follows:
 
@@ -427,25 +467,31 @@ Check S (S (S O)).
 Check 2 + 3.
 Compute 2 + 3.
 
-(* Now we can define the length function *)
+(** Now we can define the [length] function: *)
 
 Fixpoint length T (l : list T) :=
+(* FULL *)
   match l with
   | [] => 0
   | h :: t => 1 + length t
   end.
+(* FULL *)
+(* TERSE: WORK IN CLASS *)
 
 Compute length [1; 1; 1].
 
-(* 90 seconds *)
-(* Exercise *)
+(* EX3 (app_length) *)
 
 Lemma app_length : forall T (l1 l2 : list T),
   length (l1 ++ l2) = length l1 + length l2.
 Proof.
-  (* Fill in here *)
-Admitted.
-
+(* ADMITTED *)
+  intros T l1 l2.
+  induction l1 as [|h t IH].
+  + reflexivity.
+  + simpl. rewrite IH. reflexivity.
+Qed.
+(* /ADMITTED *)
 
 (** Often we find ourselves needing to reason about _contradictory_
     hypotheses. Whenever we have a hypothesis that equates two
@@ -462,13 +508,14 @@ Admitted.
     - [discriminate]: Looks for an equation between terms starting
       with different constructors, and solves the current goal.
 
-    Let's try to prove that if [l1 ++ l2 = nil] then [l1] is [nil]
+    Let's try to prove that if [l1 ++ l2 = []] then [l1] is [[]]
 
  *)
 
-Lemma plus_nil_l : forall T (l1 l2 : list T),
+Lemma app_eq_nil_l : forall T (l1 l2 : list T),
   l1 ++ l2 = [] -> l1 = [].
 Proof.
+(* WORKINCLASS *)
   intros T l1 l2 H.
   destruct l1 as [| h t].
   + (* [] *)
@@ -477,54 +524,87 @@ Proof.
     simpl in H.
     discriminate.
 Qed.
+(* /WORKINCLASS *)
 
-
-(* 30 seconds *)
-(* Exercise: Prove the same about l2. *)
+(* EX2 (app_eq_nil_r) *)
+(** Prove the same about [l2]. *)
 
 Lemma plus_nil_r : forall T (l1 l2 : list T),
   l1 ++ l2 = [] -> l2 = [].
 Proof.
-  (* Fill in here *)
-Admitted.
+(* ADMITTED *)
+  intros T l1 l2 H.
+  destruct l1 as [|h t].
+  + apply H.
+  + discriminate.
+Qed.
+(* /ADMITTED *)
+(** [] *)
 
+(** FULL: Coq, like many other proof assistants, requires functions to
+    be _total_ and defined for all possible inputs; in particular,
+    recursive functions are always required to terminate.
+
+    Since there is no general algorithm for deciding whether a
+    function is terminating or not, Coq needs to settle for an
+    incomplete class of recursive functions that is easy to show
+    terminating. This means that, although every recursive function
+    accepted by Coq is terminating, there are many recursive functions
+    that always terminate but are not accepted by Coq, because it
+    isn't "smart enough" to realize that they indeed terminate.
+
+    The criterion adopted by Coq for deciding whether to accept a
+    definition or not is _structural recursion_: All recursive calls
+    must be performed on _sub-terms_ of the original argument.
+
+    Note that the definition of _sub-terms_ used in context is purely syntactic
+    hence the following definition fails.
+
+**)
+(** TERSE: Note that there are many functions that we cannot write in Coq... *)
 
 Fail Fixpoint shuffle T (l1 l2 : list T) :=
   match l1 with
-    | [] => l2
-    | h :: t => h :: shuffle l2 t
+  | [] => l2
+  | h :: t => h :: shuffle l2 t
   end.
 
-(** The [Fail] keyword instructs Coq to ignore a command when it
+(** FULL: The [Fail] keyword instructs Coq to ignore a command when it
     fails, but to fail if the command succeeds. It is useful for
     showing certain pieces of code that are not accepted by the
     language.
 
-    In this case, we can rewrite [shuffle] so that it is accepted by Coq's
-    termination checker: *)
-
+    In this case, we can rewrite [shuffle] so that it is accepted by
+    Coq's termination checker: *)
+(** TERSE: We can easily adapt this function to please Coq. *)
 Fixpoint shuffle T (l1 l2 : list T) :=
+(* FULL *)
   match l1, l2 with
-    | h1 :: t1, h2 :: t2 => h1 :: h2 :: shuffle t1 t2
-    | [], _ => l2
-    | _, [] => l1
+  | h1 :: t1, h2 :: t2 => h1 :: h2 :: shuffle t1 t2
+  | [], _ => l2
+  | _, [] => l1
   end.
-
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 
 Print shuffle.
 
 
-(** Let's define list reversal function and prove some of its
-    basic properties. *)
+(** Let's define list reversal function and prove some of its basic
+    properties. *)
 
 Fixpoint rev T (l : list T) :=
+(* FULL *)
   match l with
   | [] => []
   | h :: t => (rev t) ++ [h]
   end.
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 
 Lemma rev_app : forall T (l1 l2 : list T), rev (l1 ++ l2) = rev l2 ++ rev l1.
 Proof.
+(* WORKINCLASS *)
   intros T l1 l2.
   induction l1 as [|h t IH].
   + simpl.
@@ -535,20 +615,24 @@ Proof.
     rewrite app_assoc.
     reflexivity.
 Qed.
+(* /WORKINCLASS *)
 
-(* Using rev_app prove that reversing a list twice results in the same list. *)
+(* EX2 (rev_app) *)
+(** Using [rev_app], prove that reversing a list twice results in the
+    same list. *)
 
 Lemma rev_involutive : forall T (l : list T), rev (rev l) = l.
 Proof.
-Admitted. (* fill in proof *)
+(* ADMITTED *)
+  intros T l. induction l as [|h t IH].
+  + reflexivity.
+  + simpl. rewrite rev_app. rewrite IH. reflexivity.
+Qed.
+(* /ADMITTED *)
 
-
-
-
-(** Notice that the definition of list reversal given above runs
-    in quadratic time. *)
-
-(** This is a tail-recursive equivalent that runs in linear time. *)
+(** Notice that the definition of list reversal given above runs in
+    quadratic time. Here is a tail-recursive equivalent that runs in
+    linear time. *)
 
 Fixpoint tr_rev_aux {T} (l acc : list T) : list T :=
   match l with
@@ -570,7 +654,8 @@ Definition tr_rev {T} (l: list T) := tr_rev_aux l [].
       in the goal.
 *)
 
-Lemma tr_rev_correct_try_one :
+(* FULL *)
+Lemma tr_rev_eq_rev_try_one :
   forall T (l : list T),
     tr_rev l = rev l.
 Proof.
@@ -586,7 +671,7 @@ Abort.
 (** The problem is that the result we are trying to prove is not
     general enough. We will need the following auxiliary lemma: *)
 
-Lemma tr_rev_aux_correct :
+Lemma tr_rev_aux_eq_rev :
   forall T (l1 l2 : list T),
     tr_rev_aux l1 l2 = rev l1 ++ l2.
 Proof.
@@ -617,17 +702,20 @@ Restart.
 Qed.
 
 (** Our result follows easily: *)
+(* /FULL *)
 
-Lemma tr_rev_correct :
+Lemma tr_rev_eq_rev :
   forall T (l : list T),
     tr_rev l = rev l.
 Proof.
+(* WORKINCLASS *)
   intros T l.
   unfold tr_rev.
-  rewrite tr_rev_aux_correct.
+  rewrite tr_rev_aux_eq_rev.
   SearchAbout (_ ++ []).
   apply app_nil_r.
 Qed.
+(* /WORKINCLASS *)
 
 End List.
 
