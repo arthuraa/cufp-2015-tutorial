@@ -17,11 +17,8 @@ Axiom admit : forall {T}, T.
 Module Bool.
 
 Inductive bool : Type :=
-(* FULL *)
 | true : bool
 | false : bool.
-(* /FULL *)
-(* TERSE: WORK IN CLASS *)
 
 (* EX1 (trivalue) *)
 (** Define a three-valued data type, representing ternary logic.  Here

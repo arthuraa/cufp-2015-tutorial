@@ -55,13 +55,16 @@ Hypothesis comp_refl_iff :
     [A]. It can be applied in either direction with the [apply]
     tactic. It can also be rewritten with [rewrite]. *)
 
-(** Exercise: *)
+(* EX1 (comp_refl) *)
+(** Practice the use of [rewrite] to prove the following. *)
+
 Lemma comp_refl : forall x, comp x x = Eq.
 Proof.
 (* ADMITTED *)
   intros x. rewrite comp_refl_iff. reflexivity.
 Qed.
 (* /ADMITTED *)
+(** [] *)
 
 (** Finally, we assume that if [x] is less than [y], then [y] is
     greater than [x]. The [CompOpp] function swaps [Lt] and [Gt]. *)
@@ -81,20 +84,28 @@ Inductive tree :=
 | Leaf : tree
 | Node : color -> tree -> A -> tree -> tree.
 
-(** Exercise (60s)
+(* EX2 (elements) *)
 
-    Using the list functions we have already studied, complete the
+(** Using the list functions we have already studied, complete the
     definition of the [elements] function below. Your implementation
     should perform an inorder traversal of the elements of [t] and
     accumulate them in a list. *)
 
-Fixpoint elements (t : tree) : list A := []. (* Fill in here *)
+Fixpoint elements (t : tree) : list A :=
+(* ADMIT *)
+  match t with
+  | Leaf => []
+  | Node _ tl x tr => elements tl ++ x :: elements tr
+  end.
+(* /ADMIT *)
+(** [] *)
 
 (** Before getting into details about the red-black invariants, let's
     study the following function, which looks up an element [x] of [A]
     on a tree. *)
 
 Fixpoint member x t : bool :=
+(* FULL *)
   match t with
   | Leaf => false
   | Node _ t1 x' t2 =>
@@ -104,10 +115,12 @@ Fixpoint member x t : bool :=
     | Gt => member x t2
     end
   end.
+(* FULL *)
+(* TERSE: WORK IN CLASS *)
 
-(** Exercise (30s)
+(* EX1 (member_ex) *)
 
-    To test your understanding of [member], prove the following
+(** To test your understanding of [member], prove the following
     result. *)
 
 Example member_ex :
@@ -115,7 +128,14 @@ Example member_ex :
     member x tl = true ->
     comp x y = Lt ->
     member x (Node Black tl y tr) = true.
-Proof. (* Fill in here *) Admitted.
+Proof.
+(* ADMITTED *)
+  intros x tl y tr H1 H2.
+  simpl. rewrite H2. rewrite H1. reflexivity.
+Qed.
+(* /ADMITTED *)
+
+(** [] *)
 
 (** We want to formulate a specification for [member] and prove that
     it is valid. We begin by formalizing what it means for a tree to
@@ -216,13 +236,47 @@ Proof.
     rewrite IH2; trivial.
 Qed.
 
-(* Exercise: *)
+(* EX2 (eqb_eq) *)
+
+(** Show that [eqb] implies equality. *)
+
+Lemma eqb_eq : forall x y, eqb x y = true -> x = y.
+Proof.
+(* ADMITTED *)
+  intros x y.
+  unfold eqb.
+  destruct (comp x y) eqn:Hcomp; try discriminate.
+  intros _. rewrite comp_refl_iff in Hcomp.
+  apply Hcomp.
+Qed.
+(* /ADMITTED *)
+(** [] *)
+
+(* EX3 (none_occurs) *)
+(** Prove the following result. *)
+
 Lemma none_occurs :
   forall (x : A) (f : A -> bool) (t : tree),
     f x = false ->
     all f t = true ->
     occurs x t = false.
-Proof. (* fill in here *) Admitted.
+Proof.
+(* ADMITTED *)
+  intros x f t Hfx Hft.
+  induction t as [|c tl IHl x' tr IHr]; simpl; trivial.
+  simpl in Hft.
+  destruct (all f tl) eqn:Hftl; try discriminate.
+  destruct (f x') eqn:Hfx'; try discriminate.
+  simpl in Hft.
+  rewrite IHl; simpl; trivial.
+  destruct (eqb x x') eqn:Hxx'.
+  + simpl. apply eqb_eq in Hxx'.
+    rewrite Hxx' in Hfx.
+    rewrite Hfx' in Hfx.
+    discriminate.
+  + simpl. apply IHr. apply Hft.
+Qed.
+(* /ADMITTED *)
 
 (** With these results, we are ready to prove the correctness of the
     membership testing algorithm. *)
@@ -392,6 +446,12 @@ Proof. (* stuck ... *) Abort.
     slightly stronger statement, which gives an improved bound for
     black trees. *)
 
+(* EX2 (size_max_black_height) *)
+
+(** The last part of the following proof, which deals with the case of
+    trees with black roots, is very similar to the one for red
+    roots. Your job is to complete it, adapting the preceding case. *)
+
 Lemma size_max_black_height :
   forall t,
     if is_red_black t then
@@ -402,32 +462,60 @@ Lemma size_max_black_height :
     else True.
 Proof.
   intros t. unfold is_red_black.
-  induction t as [|c t1 IH1 x t2 IH2]; simpl.
-  - lia.
-  - destruct c.
-    + admit. (* fill in here *)
-    + destruct (well_colored t1); simpl; trivial.
-      destruct (well_colored t2); simpl; trivial.
-      destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
-      rewrite beq_nat_true_iff in e12.
-      destruct (height_ok t1); simpl; trivial.
-      destruct (height_ok t2); simpl; trivial.
-      assert (H1 : size max t1 <= 2 * black_height t1 + 1).
-      { destruct (tree_color t1); simpl in *; lia. }
-      assert (H2 : size max t2 <= 2 * black_height t2 + 1).
-      { destruct (tree_color t2); simpl in *; lia. }
-      lia.
+  induction t as [|[] t1 IH1 x t2 IH2]; simpl.
+  - (* t is a Leaf *) lia.
+  - (* t has a red root *)
+    destruct (tree_color t1); simpl; trivial.
+    destruct (tree_color t2); simpl; trivial.
+    destruct (well_colored t1); simpl; trivial.
+    destruct (well_colored t2); simpl; trivial.
+    destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
+    rewrite beq_nat_true_iff in e12.
+    destruct (height_ok t1); simpl; trivial.
+    destruct (height_ok t2); simpl; trivial.
+    assert (H1 : size max t1 <= 2 * black_height t1).
+    { destruct (tree_color t1); simpl in *; lia. }
+    assert (H2 : size max t2 <= 2 * black_height t2).
+    { destruct (tree_color t2); simpl in *; lia. }
+    lia.
+  - (* t has a black root *)
+    (* ADMIT *)
+    destruct (well_colored t1); simpl; trivial.
+    destruct (well_colored t2); simpl; trivial.
+    destruct (beq_nat (black_height t1) (black_height t2)) eqn:e12; simpl; trivial.
+    rewrite beq_nat_true_iff in e12.
+    destruct (height_ok t1); simpl; trivial.
+    destruct (height_ok t2); simpl; trivial.
+    assert (H1 : size max t1 <= 2 * black_height t1 + 1).
+    { destruct (tree_color t1); simpl in *; lia. }
+    assert (H2 : size max t2 <= 2 * black_height t2 + 1).
+    { destruct (tree_color t2); simpl in *; lia. }
+    lia.
+    (* /ADMIT *)
 Qed.
 
-(** Exercise: Prove the following result using the previous two lemmas
-    relating the height of the tree to the length of its mininal
-    path. *)
+(* EX3 (size_max_size_min) *)
+
+(** We can combine the previous two results to show this one, which
+    relates the height of the tree to the length of its mininal
+    path. Note that, in the calls to [assert] below, we can mention
+    the lemmas directly, without restating them. Finish the proof. *)
 
 Lemma size_max_size_min :
   forall t,
     if is_red_black t then size max t <= 2 * size min t + 1
     else True.
-Proof. (* fill in here *) Admitted.
+Proof.
+  intros t.
+  assert (H1 := size_min_black_height t).
+  assert (H2 := size_max_black_height t).
+  unfold is_red_black in *.
+(* ADMITTED *)
+  destruct (well_colored t); simpl in *; trivial.
+  destruct (height_ok t); simpl in *; trivial.
+  destruct (tree_color t); simpl in *; lia.
+Qed.
+(* /ADMITTED *)
 
 (** The previous lemma implies that the tree is well-balanced thanks
     to the following fact, which shows that the number of elements
@@ -559,24 +647,55 @@ Proof.
   rewrite case_balance_black_left; reflexivity.
 Qed.
 
-(* Exercise: Prove this similar statement for the symmetric case. *)
+(* EX1 (black_height_balance_right) *)
+(** Prove this similar statement for the symmetric case. *)
 Lemma black_height_balance_right :
   forall c t1 x t2,
     black_height (balance_right c t1 x t2)
     = black_height (Node c t1 x t2).
-Proof. Admitted.
+Proof.
+(* ADMITTED *)
+  intros [] t1 x t2; trivial; simpl.
+  rewrite case_balance_black_right; reflexivity.
+Qed.
+(* /ADMITTED *)
+(** [] *)
 
-(* Exercise: Prove the following two lemmas, which show that the
-   consistency of the black heights of a tree is preserved after a
-   balancing step. You can use the [case_balance_black_left] and
-   [case_balance_black_right] to make your life easier. Hint: you will
-   need to reason about the behavior of [beq_nat]. *)
+(** AAA: Rationalize this *)
+(** The following two lemmas show that the consistency of the black
+    heights of a tree is preserved after abalancing step. The
+    [case_balance_black_left] and [case_balance_black_right] lemmas
+    help us make our life easier. Hint: you will need to reason about
+    the behavior of [beq_nat]. *)
 
 Lemma height_ok_balance_left :
   forall c t1 x t2,
     height_ok (balance_left c t1 x t2)
     = height_ok (Node c t1 x t2).
-Proof. Admitted.
+Proof.
+  intros c t1 x t2. destruct c; trivial.
+  apply case_balance_black_left.
+  - intros t1' x1 t2' x2 t3' x3 t4'. simpl.
+    destruct (beq_nat (black_height t1') (black_height t3')) eqn:H1; simpl;
+    try (rewrite Bool.andb_false_r; reflexivity).
+    rewrite beq_nat_true_iff in H1.
+    destruct (beq_nat (black_height t1') (black_height t2')) eqn:H2; simpl;
+    try (rewrite Bool.andb_false_r; reflexivity).
+    rewrite beq_nat_true_iff in H2. rewrite H1.
+    destruct (beq_nat (black_height t3') (black_height t4')) eqn:H3; simpl;
+    try (rewrite Bool.andb_false_r; reflexivity).
+    rewrite Bool.andb_assoc. reflexivity.
+  - intros t1' x1 t2' x2 t3' x3 t4'. simpl.
+    destruct (beq_nat (black_height t1') (black_height t2')) eqn:H1; simpl;
+    try (repeat rewrite Bool.andb_false_r; reflexivity).
+    rewrite beq_nat_true_iff in H1. rewrite H1.
+    destruct (beq_nat (black_height t2') (black_height t3')) eqn:H2; simpl;
+    try (repeat rewrite Bool.andb_false_r; reflexivity).
+    rewrite beq_nat_true_iff in H2. rewrite H2.
+    destruct (beq_nat (black_height t3') (black_height t4')) eqn:H3; simpl;
+    try (repeat rewrite Bool.andb_false_r; reflexivity).
+    repeat rewrite Bool.andb_assoc. reflexivity.
+Qed.
 
 Lemma height_ok_balance_right :
   forall c t1 x t2,
