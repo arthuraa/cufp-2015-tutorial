@@ -13,22 +13,22 @@ Require Import Psatz.
     trees are binary search trees that use an intricate invariant to
     guarantee that they are well-balanced.
 
-    We use Coq's [Section] mechanism to state our definitions within
-    the scope of common parameters. This makes our notation lighter by
-    avoiding having to redeclare these arguments in all
-    definitions. The [Variable] and [Hypothesis] keywords introduce
-    assumptions in our context that are in scope in the entire
-    [Section] declaration.
-
-    Our definitions are parameterized by a type [A] and a comparison
-    function [comp] between elements of [A]. The [comparison] type is
-    defined in the standard library, and consists of the values [Lt],
-    [Gt], and [Eq]. *)
+    We state our definitions inside of a Coq [Section], which allows
+    us parameterize them by the type of elements to be
+    stored. Specifically, we use the [Parameter] and [Hypothesis]
+    keywords to introduce parameters and hypothesis that can be
+    invoked in definitions and lemmas inside the [Section]. *)
 
 Section RedBlack.
 
-Variable A : Type.
-Variable comp : A -> A -> comparison.
+(** Our definitions are parameterized by a type [A] and a comparison
+    function [comp] between elements of [A]. The [comparison] type is
+    defined in the standard library, and represents the result of
+    comparing two elements of a totally ordered type. *)
+
+Parameter A : Type.
+Parameter comp : A -> A -> comparison.
+(* Inductive comparison : Type := Eq | Lt | Gt. *)
 
 (** In order for our definitions to work, we must assume that a few
     properties hold of the [comp] operator. First, we assume that
@@ -41,22 +41,22 @@ Hypothesis comp_trans :
                 comp x z = Lt.
 
 (** Next, we assume that [comp] is reflexive, and that elements that
-    test for [Eq] are equal.
-
-    [A <-> B] ("A if and only if B") states that [A] and [B] are
-    _logically equivalent_, i.e., that [A] implies [B] and [B] implies
-    [A]. It can be applied in either direction with the [apply]
-    tactic. It can also be rewritten with [rewrite]. *)
+    test for [Eq] are equal. *)
 
 Hypothesis comp_refl_iff :
   forall x y, comp x y = Eq <-> x = y.
+
+(** [A <-> B] ("A if and only if B") states that [A] and [B] are
+    _logically equivalent_, i.e., that [A] implies [B] and [B] implies
+    [A]. It can be applied in either direction with the [apply]
+    tactic. It can also be rewritten with [rewrite]. *)
 
 (* Exercise: *)
 Lemma comp_refl : forall x, comp x x = Eq.
 Proof. Admitted.
 
 (** Finally, we assume that if [x] is less than [y], then [y] is
-    greater than [x]. *)
+    greater than [x]. The [CompOpp] function swaps [Lt] and [Gt]. *)
 
 Hypothesis comp_opp :
   forall x y, comp x y = CompOpp (comp y x).
@@ -89,7 +89,7 @@ Fixpoint member x t : bool :=
     end
   end.
 
-(** Exercise 
+(** Exercise
 
     Using the list functions we have already studied, complete the
     definition of the [elements] function below. Your implementation
