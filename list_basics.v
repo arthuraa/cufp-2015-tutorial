@@ -1,27 +1,35 @@
 (* ###################################################################### *)
 (** * Proofs and Programs *)
 
-(** Everything in Coq is built from scratch -- even booleans!
+(** FULL: Everything in Coq is built from scratch -- even booleans!
     Fortunately, they are already provided by the Coq standard
     library, but we'll review their definition here to get familiar
-    with the basic features of the system.
+    with the basic features of the system. *)
 
-    [Inductive] is Coq's way of defining an algebraic datatype.  Its
+(** [Inductive] is Coq's way of defining an algebraic datatype.  Its
     syntax is similar to OCaml's ([type]) or Haskell's ([data]). Here,
     we define [bool] as a simple algebraic datatype. *)
 
 Module Bool.
 
 Inductive bool : Type :=
+(* FULL *)
 | true : bool
 | false : bool.
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 
-(** Exercise: Define a three-valued data type, representing ternary
-    logic.  Here something can be true, false and unknown. *)
-
-(* 30 seconds *)
+(* EX1 (trivalue) *)
+(** Define a three-valued data type, representing ternary logic.  Here
+    something can be true, false and unknown. *)
 Inductive trivalue : Type :=
-  (* Fill in here *).
+(* SOLUTION *)
+| tv_true
+| tv_false
+| tv_unknown
+(* /SOLUTION *)
+.
+(** [] *)
 
 (** We can write functions that operate on [bool]s by simple pattern
     matching, using the [match] keyword. *)
@@ -36,15 +44,18 @@ Definition negb (b:bool) : bool :=
     also use "_" as a wildcard pattern. *)
 
 Definition orb (b1 b2: bool) : bool :=
+(* FULL *)
   match b1, b2 with
   | false, false => false
   | _, _ => true
   end.
+(* /FULL *)
+(* TERSE: WORK IN CLASS *)
 
 Print orb.
 
-(** We can also use an If statement, which matches on the first constructor of
-    any two-constructor datatype, in our definition. *)
+(** We can also use an [if] statement, which matches on the first
+    constructor of any two-constructor datatype, in our definition. *)
 
 Definition andb (b1 b2: bool) : bool := if b1 then b2 else false.
 
@@ -256,13 +267,13 @@ Notation "[ x ; .. ; y ]" := (cons x .. (cons y [] ) ..).
 Notation "l1 ++ l2" := (app l1 l2) (at level 60, right associativity).
 
 (** Since nil can potentially be of any type, we add an underscore to tell Coq
-    to infer the type from the context. *) 
+    to infer the type from the context. *)
 
 (* We can now check the types of expressions involving lists. *)
 
 Check [].
 Check true :: [].
-Check [true ; false]. 
+Check [true ; false].
 Check [true ; false] ++ [false].
 
 (* And compute the last *)
@@ -356,7 +367,7 @@ Qed.
     above proof, and see where it fails. *)
 
 (* 60 seconds *)
-(* Exercise: Prove that [snoc l x] is equivalent to 
+(* Exercise: Prove that [snoc l x] is equivalent to
    appending [x] to the end of [l]. *)
 
 Lemma snoc_app : forall T (l : list T) (x : T), snoc l x = l ++ [x].
@@ -366,15 +377,15 @@ Admitted.
 
 (** The natural numbers are defined in Coq's standard library as follows:
 
-    Inductive nat : Type := 
-      | O : nat 
+    Inductive nat : Type :=
+      | O : nat
       | S : nat -> nat.
 
     where [S] stands for "Successor".
 
-    Coq prints [S (S (S O))] as "3", as you might expect. 
+    Coq prints [S (S (S O))] as "3", as you might expect.
 
-*) 
+*)
 
 Set Printing All.
 
@@ -382,7 +393,7 @@ Check 0.
 Check 2.
 Check 2 + 2.
 
-Unset Printing All.        
+Unset Printing All.
 
 Check S (S (S O)).
 Check 2 + 3.
@@ -423,7 +434,7 @@ Admitted.
     - [discriminate]: Looks for an equation between terms starting
       with different constructors, and solves the current goal.
 
-    Let's try to prove that if [l1 ++ l2 = nil] then [l1] is [nil] 
+    Let's try to prove that if [l1 ++ l2 = nil] then [l1] is [nil]
 
  *)
 
@@ -434,11 +445,11 @@ Proof.
   destruct l1 as [| h t].
   + (* [] *)
     reflexivity.
-  + (* h :: t *)  
+  + (* h :: t *)
     simpl in H.
     discriminate.
 Qed.
-    
+
 
 (* 30 seconds *)
 (* Exercise: Prove the same about l2. *)
@@ -477,7 +488,7 @@ Print shuffle.
 
 (** Let's define list reversal function and prove some of its
     basic properties. *)
- 
+
 Fixpoint rev T (l : list T) :=
   match l with
   | [] => []
@@ -495,18 +506,18 @@ Proof.
     rewrite IH.
     rewrite app_assoc.
     reflexivity.
-Qed.    
+Qed.
 
 (* Using rev_app prove that reversing a list twice results in the same list. *)
 
-Lemma rev_involutive : forall T (l : list T), rev (rev l) = l. 
+Lemma rev_involutive : forall T (l : list T), rev (rev l) = l.
 Proof.
 Admitted. (* fill in proof *)
 
 
 
 
-(** Notice that the definition of list reversal given above runs 
+(** Notice that the definition of list reversal given above runs
     in quadratic time. *)
 
 (** This is a tail-recursive equivalent that runs in linear time. *)
@@ -605,8 +616,8 @@ End List.
     You might start from the very beginning by defining the natural
     numbers as follows:
 
-    Inductive nat : Type := 
-      | O : nat 
+    Inductive nat : Type :=
+      | O : nat
       | S : nat -> nat.
 
     From there you can define +, -, *, /, ^ etc. We encourage you to

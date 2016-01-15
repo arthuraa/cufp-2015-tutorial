@@ -1,5 +1,7 @@
 *.v.d
 *.vo
 *.glob
-*-short.v
-*-full.v
+*.full.v
+*.short.v
+*.sol.v
+lia.cache
