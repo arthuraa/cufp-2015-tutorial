@@ -359,6 +359,17 @@ Fixpoint well_colored (t : tree) : bool :=
     colors_ok && well_colored t1 && well_colored t2
   end.
 
+Fixpoint has_height n (t : tree) : bool :=
+  match t, n with
+  | Leaf, 0 => true
+  | Node Red tl _ tr, _ =>
+    has_height n tl && has_height n tr
+  | Node Black tl _ tr, S n =>
+    has_height n tl && has_height n tr
+  | _, _ => false
+  end.
+
+(*
 (** The [black_height] function computes the number of black nodes on
     the path to the left-most leaf of the tree. It is used in the
     [height_ok] function, which ensures that _all_ paths have the same
@@ -378,10 +389,10 @@ Fixpoint height_ok (t : tree) : bool :=
     beq_nat (black_height t1) (black_height t2)
     && height_ok t1
     && height_ok t2
-  end.
+  end. *)
 
-Definition is_red_black (t : tree) : bool :=
-  well_colored t && height_ok t.
+Definition is_red_black n (t : tree) : bool :=
+  well_colored t && has_height n t.
 
 (** The red-black invariant is important because it implies that the
     height of the tree is logarithmic on the number of nodes. We will
@@ -395,6 +406,55 @@ Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
   | Node _ t1 _ t2 => S (f (size f t1) (size f t2))
   end.
 
+Lemma size_min_black_height :
+  forall t n,
+    if has_height n t then n <= size min t
+    else True.
+Proof.
+  intros t.
+  induction t as [|[] tl IHl x tr IHr]; intros n; simpl.
+  - destruct n as [|n]; trivial.
+  - specialize (IHl n). specialize (IHr n).
+    destruct (has_height n tl); trivial. simpl.
+    destruct (has_height n tr); trivial.
+    lia.
+  - destruct n as [|n]; trivial.
+    specialize (IHl n). specialize (IHr n).
+    destruct (has_height n tl); trivial. simpl.
+    destruct (has_height n tr); trivial. simpl.
+    lia.
+Qed.
+
+Lemma size_max_black_height :
+  forall t n,
+    if well_colored t && has_height n t then
+      match tree_color t with
+      | Red => size max t <= 2 * n + 1
+      | Black => size max t <= 2 * n
+      end
+    else True.
+Proof.
+  intros t.
+  induction t as [|[] tl IHl x tr IHr]; simpl; intros n.
+  - destruct n; trivial.
+  - destruct (tree_color tl); simpl; trivial.
+    destruct (tree_color tr); simpl; trivial.
+    specialize (IHl n). specialize (IHr n).
+    destruct (well_colored tl); simpl in *; trivial.
+    destruct (well_colored tr); simpl in *; trivial.
+    destruct (has_height n tl); simpl in *; trivial.
+    destruct (has_height n tr); simpl in *; trivial.
+    lia.
+  - destruct (well_colored tl); simpl in *; trivial.
+    destruct (well_colored tr); simpl in *; trivial.
+    destruct n as [|n]; simpl in *; trivial.
+    specialize (IHl n). specialize (IHr n).
+    destruct (has_height n tl); simpl in *; trivial.
+    destruct (has_height n tr); simpl in *; trivial.
+    destruct (tree_color tl); destruct (tree_color tr); lia.
+Qed.
+
+(*
 (** Note that [size plus] computes the number of elements stored in
     the tree. [size max] computes the height of the tree, whereas
     [size min] computes the length of the shortest path from the root
@@ -493,6 +553,7 @@ Proof.
     lia.
     (* /ADMIT *)
 Qed.
+*)
 
 (* EX3 (size_max_size_min) *)
 
@@ -502,17 +563,16 @@ Qed.
     the lemmas directly, without restating them. Finish the proof. *)
 
 Lemma size_max_size_min :
-  forall t,
-    if is_red_black t then size max t <= 2 * size min t + 1
+  forall t n,
+    if well_colored t && has_height n t then size max t <= 2 * size min t + 1
     else True.
 Proof.
-  intros t.
-  assert (H1 := size_min_black_height t).
-  assert (H2 := size_max_black_height t).
-  unfold is_red_black in *.
+  intros t n.
+  assert (H1 := size_min_black_height t n).
+  assert (H2 := size_max_black_height t n).
 (* ADMITTED *)
   destruct (well_colored t); simpl in *; trivial.
-  destruct (height_ok t); simpl in *; trivial.
+  destruct (has_height n t); simpl in *; trivial.
   destruct (tree_color t); simpl in *; lia.
 Qed.
 (* /ADMITTED *)
@@ -638,6 +698,7 @@ Qed.
 (** This lemma shows that the black height of a tree is preserved by a
     balancing step on the left: *)
 
+(*
 Lemma black_height_balance_left :
   forall c t1 x t2,
     black_height (balance_left c t1 x t2)
@@ -660,6 +721,7 @@ Proof.
 Qed.
 (* /ADMITTED *)
 (** [] *)
+*)
 
 (** AAA: Rationalize this *)
 (** The following two lemmas show that the consistency of the black
@@ -668,56 +730,69 @@ Qed.
     help us make our life easier. Hint: you will need to reason about
     the behavior of [beq_nat]. *)
 
-Lemma height_ok_balance_left :
-  forall c t1 x t2,
-    height_ok (balance_left c t1 x t2)
-    = height_ok (Node c t1 x t2).
+Lemma has_height_balance_left :
+  forall c t1 x t2 n,
+    has_height n (balance_left c t1 x t2)
+    = has_height n (Node c t1 x t2).
 Proof.
-  intros c t1 x t2. destruct c; trivial.
-  apply case_balance_black_left.
-  - intros t1' x1 t2' x2 t3' x3 t4'. simpl.
-    destruct (beq_nat (black_height t1') (black_height t3')) eqn:H1; simpl;
-    try (rewrite Bool.andb_false_r; reflexivity).
-    rewrite beq_nat_true_iff in H1.
-    destruct (beq_nat (black_height t1') (black_height t2')) eqn:H2; simpl;
-    try (rewrite Bool.andb_false_r; reflexivity).
-    rewrite beq_nat_true_iff in H2. rewrite H1.
-    destruct (beq_nat (black_height t3') (black_height t4')) eqn:H3; simpl;
-    try (rewrite Bool.andb_false_r; reflexivity).
+  intros c t1 x t2 n. destruct c; trivial.
+  apply case_balance_black_left; clear t1 x t2.
+  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
+    destruct n as [|n]; trivial.
     rewrite Bool.andb_assoc. reflexivity.
-  - intros t1' x1 t2' x2 t3' x3 t4'. simpl.
-    destruct (beq_nat (black_height t1') (black_height t2')) eqn:H1; simpl;
-    try (repeat rewrite Bool.andb_false_r; reflexivity).
-    rewrite beq_nat_true_iff in H1. rewrite H1.
-    destruct (beq_nat (black_height t2') (black_height t3')) eqn:H2; simpl;
-    try (repeat rewrite Bool.andb_false_r; reflexivity).
-    rewrite beq_nat_true_iff in H2. rewrite H2.
-    destruct (beq_nat (black_height t3') (black_height t4')) eqn:H3; simpl;
-    try (repeat rewrite Bool.andb_false_r; reflexivity).
-    repeat rewrite Bool.andb_assoc. reflexivity.
+  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
+    destruct n as [|n]; trivial.
+    rewrite Bool.andb_assoc, Bool.andb_assoc.
+    reflexivity.
 Qed.
 
-Lemma height_ok_balance_right :
-  forall c t1 x t2,
-    height_ok (balance_right c t1 x t2)
-    = height_ok (Node c t1 x t2).
-Proof. Admitted.
+Lemma has_height_balance_right :
+  forall c t1 x t2 n,
+    has_height n (balance_right c t1 x t2)
+    = has_height n (Node c t1 x t2).
+Proof.
+  intros c t1 x t2 n. destruct c; trivial.
+  apply case_balance_black_right; clear t1 x t2.
+  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
+    destruct n as [|n]; trivial.
+    rewrite Bool.andb_assoc, Bool.andb_assoc, Bool.andb_assoc.
+    reflexivity.
+  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
+    destruct n as [|n]; trivial.
+    rewrite Bool.andb_assoc, Bool.andb_assoc, Bool.andb_assoc.
+    reflexivity.
+Qed.
 
 (** Combining these results, we can show that the black height
     invariant is preserved by [insert_aux]. This proof is left as an
     exercise. *)
 
+(*
 Lemma black_height_insert_aux :
   forall x t,
     black_height (insert_aux x t)
     = black_height t.
 Proof. Admitted.
+*)
 
 Lemma height_ok_insert_aux :
-  forall x t,
-    height_ok (insert_aux x t)
-    = height_ok t.
-Proof. Admitted.
+  forall x t n,
+    has_height n (insert_aux x t)
+    = has_height n t.
+Proof.
+  intros x t.
+  induction t as [|c tl IHl x' tr IHr]; intros n.
+  - simpl. destruct n; trivial.
+  - simpl. destruct (comp x x'); trivial.
+    + rewrite has_height_balance_left. simpl.
+      rewrite IHl. destruct c; trivial.
+      destruct n as [|n]; trivial.
+      now rewrite IHl.
+    + rewrite has_height_balance_right. simpl.
+      rewrite IHr. destruct c; trivial.
+      destruct n as [|n]; trivial.
+      now rewrite IHr.
+Qed.
 
 (** The most complicated part of the invariant preservation proof for
     the insertion algorithm is showing that nodes are still colored
@@ -737,7 +812,12 @@ Lemma well_colored_weaken :
   forall t,
     well_colored t = true ->
     almost_well_colored t = true.
-Proof. Admitted.
+Proof.
+  intros t. destruct t as [|c t1 x t2]; trivial.
+  simpl. rewrite <- Bool.andb_assoc, Bool.andb_comm.
+  destruct (well_colored t1); trivial.
+  destruct (well_colored t2); trivial.
+Qed.
 
 (** The following two lemmas show that tree balancing restores the
     coloring invariant if one of the trees is almost
@@ -828,32 +908,40 @@ Proof.
       destruct (well_colored t1); trivial.
 Qed.
 
-Lemma height_ok_make_black :
-  forall t,
-    height_ok (make_black t) = height_ok t.
-Proof. intros [|c t1 x t2]; reflexivity. Qed.
+Definition new_height n t :=
+  match t with
+  | Node Red _ _ _ => S n
+  | _ => n
+  end.
+
+Lemma has_height_make_black :
+  forall t n,
+    has_height (new_height n t) (make_black t)
+    = has_height n t.
+Proof. intros [|[] t1 x t2]; reflexivity. Qed.
 
 Lemma almost_well_colored_make_black :
   forall t, well_colored (make_black t) = almost_well_colored t.
 Proof. intros [|c t1 x t2]; reflexivity. Qed.
 
 Lemma is_red_black_insert :
-  forall x t,
-    if is_red_black t then is_red_black (insert x t) = true
+  forall x n t,
+    if is_red_black n t then
+      is_red_black (new_height n (insert_aux x t)) (insert x t) = true
     else True.
 Proof.
-  intros x t.
+  intros x n t.
   unfold insert, is_red_black.
   assert (H1 := well_colored_insert_aux x t).
   assert (H2 := height_ok_insert_aux x t).
-  rewrite height_ok_make_black.
+  rewrite has_height_make_black.
   rewrite H2.
   rewrite almost_well_colored_make_black.
   destruct (well_colored t); simpl; trivial.
   destruct (tree_color t).
-  - rewrite H1. destruct (height_ok t); trivial.
+  - rewrite H1. destruct (has_height n t); trivial.
   - rewrite well_colored_weaken; trivial.
-    destruct (height_ok t); trivial.
+    destruct (has_height n t); trivial.
 Qed.
 
 End RedBlack.
