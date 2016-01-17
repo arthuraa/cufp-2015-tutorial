@@ -5,3 +5,6 @@
 *.short.v
 *.sol.v
 lia.cache
+coqsplit
+coqsplit.cmo
+coqsplit.cmi
