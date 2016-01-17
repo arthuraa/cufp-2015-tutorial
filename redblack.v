@@ -740,12 +740,14 @@ Qed.
 
 (** [] *)
 
-(** The most complicated part of the invariant preservation proof for
-    the insertion algorithm is showing that nodes are still colored
-    correctly after an insertion step. One problem is that, even after
-    a balancing step, [insert_aux] may produce a tree that is colored
-    incorrectly at its root. We formalize this property with the
-    following definition: *)
+(** To complete the invariant preservation proof, we must still
+    analyze the effect of [insert] on the colors of a tree. This is
+    not as simple as it might seem: when called on a well-colored
+    tree, [insert_aux] might generate a tree that violates the
+    coloring invariants at its root -- that is, the root might be red
+    and also have a red child. The correct inductive generalization is
+    that inserting on a red node results in a tree that is _almost_
+    well-colored: *)
 
 Definition almost_well_colored t : bool :=
   match t with
@@ -824,6 +826,12 @@ Proof.
   end; repeat rewrite Bool.andb_true_r; reflexivity.
 Qed.
 
+(* EX3 (well_colored_insert_aux) *)
+
+(** The following lemma is the main inductive invariant required to
+    show the correctess of [insert]. Complete the proof of the
+    case that covers black nodes. *)
+
 Lemma well_colored_insert_aux :
   forall x t,
     if well_colored t then
@@ -835,8 +843,10 @@ Lemma well_colored_insert_aux :
 Proof.
   intros x t.
   induction t as [|[] t1 IH1 x' t2 IH2]; trivial; simpl.
-  - reflexivity.
-  - destruct (tree_color t1); simpl; trivial.
+  - (* t is a Leaf *)
+    reflexivity.
+  - (* t has a Red root *)
+    destruct (tree_color t1); simpl; trivial.
     destruct (tree_color t2); simpl; trivial.
     destruct (comp x x'); simpl.
     + destruct (well_colored t1 && well_colored t2); trivial.
@@ -844,7 +854,9 @@ Proof.
       destruct (well_colored t2); simpl; trivial.
       rewrite IH1. reflexivity.
     + destruct (well_colored t1); simpl; trivial.
-  - destruct (comp x x'); simpl.
+  - (* t has a Black root *)
+    (* ADMIT *)
+    destruct (comp x x'); simpl.
     + destruct (well_colored t1 && well_colored t2); trivial.
     + destruct (well_colored t1); simpl; trivial.
       assert (IH1' : almost_well_colored (insert_aux x t1) = true).
@@ -859,9 +871,15 @@ Proof.
         apply well_colored_weaken. trivial. }
       rewrite well_colored_balance_black_right; trivial.
       destruct (well_colored t1); trivial.
+    (* /ADMIT *)
 Qed.
 
-Definition new_height n c :=
+(** [] *)
+
+(** We can now prove our final result. The [new_black_height] function
+    below computes the black height of a tree after the insertion. *)
+
+Definition new_black_height n c :=
   match c with
   | Red => S n
   | Black => n
@@ -869,7 +887,7 @@ Definition new_height n c :=
 
 Lemma black_height_make_black :
   forall t n,
-    black_height (new_height n (tree_color t)) (make_black t)
+    black_height (new_black_height n (tree_color t)) (make_black t)
     = black_height n t.
 Proof. intros [|[] t1 x t2]; reflexivity. Qed.
 
@@ -880,7 +898,7 @@ Proof. intros [|c t1 x t2]; reflexivity. Qed.
 Lemma is_red_black_insert :
   forall x n t,
     if is_red_black n t then
-      is_red_black (new_height n (tree_color (insert_aux x t))) (insert x t) = true
+      is_red_black (new_black_height n (tree_color (insert_aux x t))) (insert x t) = true
     else True.
 Proof.
   intros x n t.
