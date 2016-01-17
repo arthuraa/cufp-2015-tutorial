@@ -410,17 +410,17 @@ Proof.
     -----------
 
     - [lia]: Short for "Linear Integer Arithmetic"; tries to solve
-      goals that involve linear systems of inequalites on integers. *)
+      goals that involve linear systems of inequalites on integers.
+
+    - [specialize]: Instantiate a universally quantified hypothesis *)
 
   - specialize (IHl n). specialize (IHr n).
     destruct (black_height n tl); trivial. simpl.
-    destruct (black_height n tr); trivial.
-    lia.
+    destruct (black_height n tr); trivial. lia.
   - destruct n as [|n]; trivial.
     specialize (IHl n). specialize (IHr n).
     destruct (black_height n tl); trivial. simpl.
-    destruct (black_height n tr); trivial. simpl.
-    lia.
+    destruct (black_height n tr); trivial. lia.
 Qed.
 
 (** We now need to relate the black height of a tree to its total
@@ -486,10 +486,10 @@ Qed.
 
 Lemma size_max_size_min :
   forall t n,
-    if well_colored t && black_height n t then size max t <= 2 * size min t + 1
+    if is_red_black n t then size max t <= 2 * size min t + 1
     else True.
 Proof.
-  intros t n.
+  intros t n. unfold is_red_black.
   assert (H1 := size_min_black_height t n).
   assert (H2 := size_max_black_height t n).
 (* ADMITTED *)
@@ -509,21 +509,20 @@ Lemma size_min_size_plus :
     2 ^ size min t <= size plus t + 1.
 Proof.
   intros t.
-  induction t as [|c t1 IH1 x t2 IH2]; simpl.
-  - lia.
-  - assert (H1 : 2 ^ min (size min t1) (size min t2)
-                 <= 2 ^ size min t1).
-    { apply Nat.pow_le_mono_r; lia. }
-    assert (H2 : 2 ^ min (size min t1) (size min t2)
-                 <= 2 ^ size min t2).
-    { apply Nat.pow_le_mono_r; lia. }
-    lia.
+  induction t as [|c t1 IH1 x t2 IH2]; simpl; trivial.
+  assert (H1 : 2 ^ min (size min t1) (size min t2)
+               <= 2 ^ size min t1).
+  { apply Nat.pow_le_mono_r; lia. }
+  assert (H2 : 2 ^ min (size min t1) (size min t2)
+               <= 2 ^ size min t2).
+  { apply Nat.pow_le_mono_r; lia. }
+  lia.
 Qed.
 
-(** As an interesting verification example, we will show how to verify
-    that red-black-tree insertion preserves the data-structure
-    invariants. This definition is taken from Okasaki's classical
-    "Red-Black Trees in a Functional Setting" paper.
+(** As an interesting verification example, we show how to verify that
+    red-black-tree insertion preserves the data-structure
+    invariants. This definition is taken from Chris Okasaki's
+    classical paper "Red-Black Trees in a Functional Setting".
 
     The insertion algorithm works basically as regular binary-tree
     insertion, except for an additional balancing step, which is
@@ -621,8 +620,7 @@ Qed.
 (** The following two lemmas show that the consistency of the black
     heights of a tree is preserved after abalancing step. The
     [case_balance_black_left] and [case_balance_black_right] lemmas
-    help us make our life easier. Hint: you will need to reason about
-    the behavior of [beq_nat]. *)
+    help us make our life easier. *)
 
 Lemma black_height_balance_left :
   forall c t1 x t2 n,
@@ -657,15 +655,17 @@ Proof.
     reflexivity.
 Qed.
 
-(** Combining these results, we can show that the black height
-    invariant is preserved by [insert_aux]. This proof is left as an
-    exercise. *)
+(* EX3 (height_ok_insert_aux) *)
+
+(** Using the last two results, show that the black height invariant
+    is preserved by [insert_aux]. *)
 
 Lemma height_ok_insert_aux :
   forall x t n,
     black_height n (insert_aux x t)
     = black_height n t.
 Proof.
+(* ADMITTED *)
   intros x t.
   induction t as [|c tl IHl x' tr IHr]; intros n.
   - simpl. destruct n; trivial.
@@ -673,12 +673,15 @@ Proof.
     + rewrite black_height_balance_left. simpl.
       rewrite IHl. destruct c; trivial.
       destruct n as [|n]; trivial.
-      now rewrite IHl.
+      rewrite IHl. trivial.
     + rewrite black_height_balance_right. simpl.
       rewrite IHr. destruct c; trivial.
       destruct n as [|n]; trivial.
-      now rewrite IHr.
+      rewrite IHr. trivial.
 Qed.
+(* /ADMITTED *)
+
+(** [] *)
 
 (** The most complicated part of the invariant preservation proof for
     the insertion algorithm is showing that nodes are still colored
@@ -693,17 +696,24 @@ Definition almost_well_colored t : bool :=
   | Node _ t1 _ t2 => well_colored t1 && well_colored t2
   end.
 
-(* Exercise: Show that well-colored trees are almost well-colored. *)
+(* EX1 (well_colored_weaken) *)
+
+(** Show that well-colored trees are almost well-colored. *)
+
 Lemma well_colored_weaken :
   forall t,
     well_colored t = true ->
     almost_well_colored t = true.
 Proof.
+(* ADMITTED *)
   intros t. destruct t as [|c t1 x t2]; trivial.
   simpl. rewrite <- Bool.andb_assoc, Bool.andb_comm.
   destruct (well_colored t1); trivial.
   destruct (well_colored t2); trivial.
 Qed.
+(* /ADMITTED *)
+
+(** [] *)
 
 (** The following two lemmas show that tree balancing restores the
     coloring invariant if one of the trees is almost
