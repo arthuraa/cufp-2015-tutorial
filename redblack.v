@@ -594,56 +594,65 @@ Definition insert x t : tree :=
     lemmas, which allow us to consider the interesting cases directly:
     *)
 
-Lemma case_balance_black_left :
-  forall {T} (f : tree -> T),
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black (Node Red (Node Red t1 x1 t2) x2 t3) x3 t4)) ->
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black (Node Red t1 x1 (Node Red t2 x2 t3)) x3 t4)) ->
-    forall t1 x t2,
-      f (balance_black_left t1 x t2)
-      = f (Node Black t1 x t2).
+Inductive balance_left_spec : color -> tree -> A -> tree -> tree -> Prop :=
+| BalanceLeftSpec1 :
+    forall t1 x1 t2 x2 t3 x3 t4,
+      balance_left_spec Black (Node Red (Node Red t1 x1 t2) x2 t3) x3 t4
+                        (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+| BalanceLeftSpec2 :
+    forall t1 x1 t2 x2 t3 x3 t4,
+      balance_left_spec Black (Node Red t1 x1 (Node Red t2 x2 t3)) x3 t4
+                        (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+| BalanceLeftSpec3 :
+    forall c t1 x t2,
+      balance_left_spec c t1 x t2 (Node c t1 x t2).
+
+Lemma case_balance_left :
+  forall c t1 x t2,
+    balance_left_spec c t1 x t2 (balance_left c t1 x t2).
 Proof.
-  intros T f H1 H2 t1 x t2.
-  destruct t1 as [|[] [|[]] ? [|[]]]; simpl; trivial.
+  intros [] t1 x t2; simpl; try constructor.
+  destruct t1 as [|[] [|[]] ? [|[]]]; simpl; constructor.
 Qed.
 
-Lemma case_balance_black_right :
-  forall {T} (f : tree -> T),
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black t1 x1 (Node Red (Node Red t2 x2 t3) x3 t4))) ->
-    (forall t1 x1 t2 x2 t3 x3 t4,
-       f (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
-       = f (Node Black t1 x1 (Node Red t2 x2 (Node Red t3 x3 t4)))) ->
-    forall t1 x t2,
-      f (balance_black_right t1 x t2)
-      = f (Node Black t1 x t2).
+Inductive balance_right_spec : color -> tree -> A -> tree -> tree -> Prop :=
+| BalanceRightSpec1 :
+    forall t1 x1 t2 x2 t3 x3 t4,
+      balance_right_spec Black t1 x1 (Node Red (Node Red t2 x2 t3) x3 t4)
+                         (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+| BalanceRightSpec2 :
+    forall t1 x1 t2 x2 t3 x3 t4,
+      balance_right_spec Black t1 x1 (Node Red t2 x2 (Node Red t3 x3 t4))
+                         (Node Red (Node Black t1 x1 t2) x2 (Node Black t3 x3 t4))
+| BalanceRightSpec3 :
+    forall c t1 x t2,
+      balance_right_spec c t1 x t2 (Node c t1 x t2).
+
+Lemma case_balance_right :
+  forall c t1 x t2,
+    balance_right_spec c t1 x t2 (balance_right c t1 x t2).
 Proof.
-  intros T f H1 H2 t1 x t2.
-  destruct t2 as [|[] [|[]] ? [|[]]]; simpl; trivial.
+  intros [] t1 x t2; simpl; try constructor.
+  destruct t2 as [|[] [|[]] ? [|[]]]; simpl; constructor.
 Qed.
 
 (** AAA: Rationalize this *)
 (** The following two lemmas show that the consistency of the black
-    heights of a tree is preserved after abalancing step. The
+    heights of a tree is preserved after a balancing step. The
     [case_balance_black_left] and [case_balance_black_right] lemmas
-    help us make our life easier. *)
+    help us streamline the proofs. *)
 
 Lemma black_height_balance_left :
   forall c t1 x t2 n,
     black_height n (balance_left c t1 x t2)
     = black_height n (Node c t1 x t2).
 Proof.
-  intros c t1 x t2 n. destruct c; trivial.
-  apply case_balance_black_left; clear t1 x t2.
-  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
-    destruct n as [|n]; trivial.
+  intros c t1 x t2 n.
+  destruct (case_balance_left c t1 x t2)
+    as [t1 x1 t2 x2 t3 x3 t4|t1 x1 t2 x2 t3 x3 t4|c t1 x t2]; simpl; trivial.
+  - destruct n as [|n]; trivial.
     rewrite Bool.andb_assoc. reflexivity.
-  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
-    destruct n as [|n]; trivial.
+  - destruct n as [|n]; trivial.
     rewrite Bool.andb_assoc, Bool.andb_assoc.
     reflexivity.
 Qed.
@@ -653,16 +662,13 @@ Lemma black_height_balance_right :
     black_height n (balance_right c t1 x t2)
     = black_height n (Node c t1 x t2).
 Proof.
-  intros c t1 x t2 n. destruct c; trivial.
-  apply case_balance_black_right; clear t1 x t2.
-  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
-    destruct n as [|n]; trivial.
-    rewrite Bool.andb_assoc, Bool.andb_assoc, Bool.andb_assoc.
-    reflexivity.
-  - intros t1 x1 t2 x2 t3 x3 t4. simpl.
-    destruct n as [|n]; trivial.
-    rewrite Bool.andb_assoc, Bool.andb_assoc, Bool.andb_assoc.
-    reflexivity.
+  intros c t1 x t2 n.
+  destruct (case_balance_right c t1 x t2)
+    as [t1 x1 t2 x2 t3 x3 t4|t1 x1 t2 x2 t3 x3 t4|c t1 x t2]; simpl; trivial.
+  - destruct n as [|n]; trivial.
+    rewrite Bool.andb_assoc, Bool.andb_assoc, Bool.andb_assoc. reflexivity.
+  - destruct n as [|n]; trivial.
+    rewrite Bool.andb_assoc, Bool.andb_assoc, Bool.andb_assoc. reflexivity.
 Qed.
 
 (* EX3 (height_ok_insert_aux) *)
