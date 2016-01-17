@@ -261,7 +261,8 @@ Qed.
 (* EX3 (none_occurs) *)
 (** If [x] is strictly smaller (or bigger) than the elements of a tree
     [t], we know that [x] cannot occur in [t], thanks to the following
-    general result left as an exercise. *)
+    general result. Your job is to prove it and then use it to show
+    the [member_prune_right] and [member_prune_left] lemmas below. *)
 
 Lemma none_occurs :
   forall (x : A) (f : A -> bool) (t : tree),
@@ -291,10 +292,12 @@ Lemma member_prune_right :
     all (ltb x) t = true ->
     occurs y t = false.
 Proof.
+(* ADMITTED *)
   intros x y t H.
   apply none_occurs.
   unfold ltb. rewrite comp_opp. rewrite H. reflexivity.
 Qed.
+(* /ADMITTED *)
 
 Lemma member_prune_left :
   forall x y t,
@@ -302,14 +305,20 @@ Lemma member_prune_left :
     all (fun z => ltb z x) t = true ->
     occurs y t = false.
 Proof.
+(* ADMITTED *)
   intros x y t H.
   apply none_occurs.
   unfold ltb. rewrite H. reflexivity.
 Qed.
+(* /ADMITTED *)
 
 (** [] *)
 
-(** With these results, we are ready to prove the correctness of [member] *)
+(** With these results, we are ready to prove the correctness of
+    [member]. Notice that we state the lemma in a slightly different
+    form, using an [if] expression instead of an implication
+    ([->]). This allows the Coq simplification engine to perform a few
+    deduction steps as we progress through the proof. *)
 
 Lemma member_correct :
   forall x t,
@@ -320,48 +329,43 @@ Proof.
   induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
   destruct (all (fun z => ltb z y) t1) eqn:H1; simpl; trivial.
   destruct (all (ltb y) t2) eqn:H2; simpl; trivial.
+
+(** Notice how the induction hypotheses change after the following
+    lines. *)
+
   destruct (search_tree t1) eqn:H3; simpl; trivial.
   destruct (search_tree t2) eqn:H4; simpl; trivial.
   unfold eqb. rewrite IH1, IH2.
 
-(** We often want to prove intermediate results and add them as
-    hypothesis in our proof context. This can be done with the
-    [assert] tactic.
+(** Note that we can apply lemmas with universally quantified
+    variables and hypotheses as functions. This has the effect of
+    instantiating these quantified variables and providing proofs for
+    the required hypotheses directly. *)
+(** FULL: Cf. the use of [member_prune_left] and [member_prune_right]
+    below. *)
 
-    New Tactics
-    -----------
-
-    - [assert]: Introduce a new hypothesis in the context, requiring
-      us to prove that it holds. *)
-
+(* WORKINCLASS *)
   destruct (comp x y) eqn:Hxy.
-
-(** The curly braces [{}] allow us to focus on the current subgoal,
-    like [+] and [-]. *)
-
   - rewrite Bool.orb_true_r. reflexivity.
   - rewrite (member_prune_right y x t2 Hxy H2).
     rewrite Bool.orb_false_r. rewrite Bool.orb_false_r. reflexivity.
   - rewrite (member_prune_left y x t1 Hxy H1). reflexivity.
-
-(** Note that we can apply lemmas with universally quantified
-    variables and hypotheses as functions. This has the effect of
-    instantiating these quantified variables and providing proofs for
-    the required hypotheses directly. Cf. the use [member_prune_left]
-    and [member_prune_right] above. *)
-
 Qed.
+(* /WORKINCLASS *)
 
-(** Now that we have shown our first interesting correctness property,
-    we turn our attention to the actual red-black invariant. A
+
+(** ** The Invariant
+
+    We now turn our attention to the actual red-black invariant. A
     red-black tree is _valid_ if (1) all paths from the root of the
     tree to its leaves go through the same number of black nodes, and
     (2) if red nodes only have black children (we stipulate that the
-    leaves of the tree are black). The [well_colored] function below
-    checks whether (2) holds or not. To check (1), we use the
-    [black_height] function defined below: [black_height n t] returns
-    [true] if and only if every path from the root of the tree to a
-    leaf goes through exactly [n] black nodes. *)
+    leaves of the tree are black). *)
+(** FULL: The [well_colored] function below checks whether (2) holds
+    or not. To check (1), we use the [black_height] function defined
+    below: [black_height n t] returns [true] if and only if every path
+    from the root of the tree to a leaf goes through exactly [n] black
+    nodes. *)
 
 Definition tree_color (t : tree) : color :=
   match t with
@@ -393,7 +397,8 @@ Fixpoint black_height n (t : tree) : bool :=
   | _, _ => false
   end.
 
-(** We combine both invariants in a single [is_red_black] function: *)
+(** FULL: We combine both invariants in a single [is_red_black]
+    function: *)
 
 Definition is_red_black n (t : tree) : bool :=
   well_colored t && black_height n t.
@@ -413,10 +418,10 @@ Fixpoint size (f : nat -> nat -> nat) (t : tree) : nat :=
   | Node _ t1 _ t2 => S (f (size f t1) (size f t2))
   end.
 
-(** It seems natural to say that the black height of a tree is at most
-    the size of its minimal path. Showing this result is easy. Here,
-    we use the order relation on naturals provided by the standard
-    library. *)
+(** It seems natural to claim that the black height of a tree is at
+    most the size of its minimal path. Showing this result is
+    easy. Here, we use the order relation on naturals provided by the
+    standard library. *)
 
 Lemma size_min_black_height :
   forall t n,
@@ -456,20 +461,20 @@ Qed.
 
 (* EX2 (size_max_black_height) *)
 
-(** The last part of the following proof, which deals with the case of
-    trees with black roots, is very similar to the one for red
-    roots. Your job is to complete it, adapting the preceding case. *)
+(** The last part of the following proof covers trees with black
+    roots, and is very similar to the analogous one for red
+    roots. Your job is to complete it. *)
 
 Lemma size_max_black_height :
   forall t n,
-    if well_colored t && black_height n t then
+    if is_red_black n t then
       match tree_color t with
       | Red => size max t <= 2 * n + 1
       | Black => size max t <= 2 * n
       end
     else True.
 Proof.
-  intros t.
+  intros t. unfold is_red_black.
   induction t as [|[] tl IHl x tr IHr]; simpl; intros n.
   - (* t is a Leaf *)
     destruct n; trivial.
@@ -494,21 +499,24 @@ Proof.
     (* /ADMIT *)
 Qed.
 
+(** [] *)
+
 (* EX3 (size_max_size_min) *)
 
-(** We can combine the previous two results to show the next one,
-    which relates the height of the tree to the length of its mininal
-    path. Note that, in the calls to [assert] below, we can mention
-    the lemmas directly, without restating them. Finish the proof. *)
+(** The previous two results imply the next one, which relates the
+    height of the tree to the length of its mininal path. The [assert]
+    tactic is used below to bring those results into the context as
+    explicit hypotheses. Finish the proof. *)
 
 Lemma size_max_size_min :
   forall t n,
     if is_red_black n t then size max t <= 2 * size min t + 1
     else True.
 Proof.
-  intros t n. unfold is_red_black.
+  intros t n.
   assert (H1 := size_min_black_height t n).
   assert (H2 := size_max_black_height t n).
+  unfold is_red_black in *.
 (* ADMITTED *)
   destruct (well_colored t); simpl in *; trivial.
   destruct (black_height n t); simpl in *; trivial.
@@ -516,16 +524,24 @@ Proof.
 Qed.
 (* /ADMITTED *)
 
-(** The previous lemma implies that the tree is well-balanced thanks
-    to the following fact, which shows that the number of elements
-    stored in a tree is exponential in the length of the minimal path:
-    *)
+(** [] *)
+
+(** Finally, we derive the bound we sought by appealing to the
+    following lemma, proved using results from Coq's standard
+    library.
+
+    New Tactics
+    -----------
+
+    - [assert]: Introduce a new hypothesis in the context, requiring
+      us to prove that it holds. The curly braces [{}] allow us to
+      focus on the current subgoal, like [+] and [-]. *)
 
 Lemma size_min_size_plus :
   forall t,
-    2 ^ size min t <= size plus t + 1.
+    size min t <= log2 (size plus t + 1).
 Proof.
-  intros t.
+  intros t. apply Nat.log2_le_pow2; try lia.
   induction t as [|c t1 IH1 x t2 IH2]; simpl; trivial.
   assert (H1 : 2 ^ min (size min t1) (size min t2)
                <= 2 ^ size min t1).
@@ -536,14 +552,27 @@ Proof.
   lia.
 Qed.
 
-(** As an interesting verification example, we show how to verify that
-    red-black-tree insertion preserves the data-structure
-    invariants. This definition is taken from Chris Okasaki's
-    classical paper "Red-Black Trees in a Functional Setting".
+Lemma is_red_black_balanced :
+  forall t n,
+    is_red_black n t = true ->
+    size max t <= 2 * log2 (size plus t + 1) + 1.
+Proof.
+  intros t n H.
+  assert (H1 := size_max_size_min t n). rewrite H in H1.
+  assert (H2 := size_min_size_plus t). lia.
+Qed.
 
-    The insertion algorithm works basically as regular binary-tree
-    insertion, except for an additional balancing step, which is
-    required to restore the tree invariants. *)
+(** ** Insertion
+
+    Knowing that red-black trees are balanced would be useless if that
+    invariant were not preserved by tree operations. To conclude this
+    module, we define an insertion operation and show that it
+    preserves the red-black invariant.
+
+    Our definition is adapted from Chris Okasaki's classical paper
+    "Red-Black Trees in a Functional Setting". It is essentially a
+    standard insertion function on binary trees, except for an
+    additional balancing step for restoring the tree invariants. *)
 
 Definition balance_black_left tl x tr : tree :=
   match tl, x, tr with
@@ -827,15 +856,15 @@ Proof.
       destruct (well_colored t1); trivial.
 Qed.
 
-Definition new_height n t :=
-  match t with
-  | Node Red _ _ _ => S n
-  | _ => n
+Definition new_height n c :=
+  match c with
+  | Red => S n
+  | Black => n
   end.
 
 Lemma black_height_make_black :
   forall t n,
-    black_height (new_height n t) (make_black t)
+    black_height (new_height n (tree_color t)) (make_black t)
     = black_height n t.
 Proof. intros [|[] t1 x t2]; reflexivity. Qed.
 
@@ -846,7 +875,7 @@ Proof. intros [|c t1 x t2]; reflexivity. Qed.
 Lemma is_red_black_insert :
   forall x n t,
     if is_red_black n t then
-      is_red_black (new_height n (insert_aux x t)) (insert x t) = true
+      is_red_black (new_height n (tree_color (insert_aux x t))) (insert x t) = true
     else True.
 Proof.
   intros x n t.
