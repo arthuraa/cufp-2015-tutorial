@@ -139,7 +139,7 @@ Qed.
 
 (** We want to state a specification for [member] and prove that it is
     valid. First, we formalize what it means for a tree to be a binary
-    search tree. This will require the following function, which tests
+    search tree. This requires the following function, which tests
     whether a property [f] holds of the elements of a tree [t]: *)
 
 Fixpoint all (f : A -> bool) (t : tree) : bool :=
@@ -148,8 +148,8 @@ Fixpoint all (f : A -> bool) (t : tree) : bool :=
   | Node _ t1 x t2 => all f t1 && f x && all f t2
   end.
 
-(** Let's prove the following simple property of [all], which we will
-    need later. *)
+(** Let's prove the following simple property of [all], which will
+    be useful later. *)
 
 Lemma all_weaken :
   forall f g,
@@ -169,10 +169,9 @@ Proof.
   - trivial.
   - simpl. intros H.
 
-(** FULL: Often, tactics generate multiple subgoals that can be solved with
-    simple (or very similar) proofs. In these situations, it is useful
-    to run a tactic on all these subgoals simultaneously. Enter the
-    [;] operator. *)
+(** FULL: Often, tactics generate multiple subgoals that can be solved
+    with simple (or very similar) proofs. We can handle these
+    simultaneously using the tactic sequencing operator [;]. *)
 
 (** New Tactics
     -----------
@@ -200,11 +199,12 @@ Proof.
 Qed.
 (* /WORKINCLASS *)
 
-(** We can now state the binary-tree invariant: Each element [x] on an
-    internal node is strictly greater than those to its left, and
-    strictly smaller than those to its right. The auxiliary function
-    [ltb] tests whether an element [x : A] is smaller than some [y :
-    A]. *)
+(** FULL: We can now state the binary-tree invariant: Each element [x]
+    on an internal node is strictly greater than those to its left,
+    and strictly smaller than those to its right. The auxiliary
+    function [ltb] tests whether an element of [A] is smaller than
+    another one. *)
+(** TERSE: Let's define the binary-tree invariant. *)
 
 Definition ltb x y :=
   match comp x y with
@@ -227,8 +227,8 @@ Fixpoint search_tree (t : tree) : bool :=
 
 (** In order to state the specification of [member], we define a
     function [occurs] that looks up an element [x] on all nodes of a
-    tree [t]. The [eqb] function tests whether two elements [x] and
-    [y] are equal. *)
+    tree [t]. The [eqb] function tests whether two elements of [A] are
+    equal. *)
 
 Definition eqb x y :=
   match comp x y with
@@ -241,7 +241,6 @@ Fixpoint occurs (x : A) (t : tree) : bool :=
   | Leaf => false
   | Node _ t1 y t2 => occurs x t1 || eqb x y || occurs x t2
   end.
-
 
 (* EX2 (eqb_eq) *)
 
@@ -260,7 +259,9 @@ Qed.
 (** [] *)
 
 (* EX3 (none_occurs) *)
-(** Prove the following result. *)
+(** If [x] is strictly smaller (or bigger) than the elements of a tree
+    [t], we know that [x] cannot occur in [t], thanks to the following
+    general result left as an exercise. *)
 
 Lemma none_occurs :
   forall (x : A) (f : A -> bool) (t : tree),
@@ -284,22 +285,44 @@ Proof.
 Qed.
 (* /ADMITTED *)
 
+Lemma member_prune_right :
+  forall x y t,
+    comp y x = Lt ->
+    all (ltb x) t = true ->
+    occurs y t = false.
+Proof.
+  intros x y t H.
+  apply none_occurs.
+  unfold ltb. rewrite comp_opp. rewrite H. reflexivity.
+Qed.
+
+Lemma member_prune_left :
+  forall x y t,
+    comp y x = Gt ->
+    all (fun z => ltb z x) t = true ->
+    occurs y t = false.
+Proof.
+  intros x y t H.
+  apply none_occurs.
+  unfold ltb. rewrite H. reflexivity.
+Qed.
+
+(** [] *)
+
 (** With these results, we are ready to prove the correctness of [member] *)
 
 Lemma member_correct :
   forall x t,
-    search_tree t = true ->
-    member x t = occurs x t.
+    if search_tree t then member x t = occurs x t
+    else True.
 Proof.
   intros x t.
   induction t as [|c t1 IH1 y t2 IH2]; simpl; trivial.
-  intros H.
-  destruct (all (fun z => ltb z y) t1) eqn:H1; try discriminate.
-  destruct (all (ltb y) t2) eqn:H2; try discriminate.
-  destruct (search_tree t1) eqn:H3; try discriminate. simpl in H.
-  unfold eqb.
-  rewrite IH1; trivial.
-  rewrite IH2; trivial.
+  destruct (all (fun z => ltb z y) t1) eqn:H1; simpl; trivial.
+  destruct (all (ltb y) t2) eqn:H2; simpl; trivial.
+  destruct (search_tree t1) eqn:H3; simpl; trivial.
+  destruct (search_tree t2) eqn:H4; simpl; trivial.
+  unfold eqb. rewrite IH1, IH2.
 
 (** We often want to prove intermediate results and add them as
     hypothesis in our proof context. This can be done with the
@@ -311,38 +334,22 @@ Proof.
     - [assert]: Introduce a new hypothesis in the context, requiring
       us to prove that it holds. *)
 
-  assert (Hx : ltb x x = false).
-  { unfold ltb. rewrite comp_refl. reflexivity. }
+  destruct (comp x y) eqn:Hxy.
 
 (** The curly braces [{}] allow us to focus on the current subgoal,
     like [+] and [-]. *)
 
-  destruct (comp x y) eqn:Hxy.
   - rewrite Bool.orb_true_r. reflexivity.
-  - assert (H2' : all (ltb x) t2 = true).
+  - rewrite (member_prune_right y x t2 Hxy H2).
+    rewrite Bool.orb_false_r. rewrite Bool.orb_false_r. reflexivity.
+  - rewrite (member_prune_left y x t1 Hxy H1). reflexivity.
 
 (** Note that we can apply lemmas with universally quantified
-    variables and hypotheses. This has the effect of instantiating
-    these quantified variables and providing proofs for the required
-    hypotheses directly. Cf. the use [all_weaken], [comp_trans], and
-    [none_occurs] below. *)
+    variables and hypotheses as functions. This has the effect of
+    instantiating these quantified variables and providing proofs for
+    the required hypotheses directly. Cf. the use [member_prune_left]
+    and [member_prune_right] above. *)
 
-    { apply (all_weaken (ltb y) (ltb x)); trivial.
-      intros z.
-      unfold ltb.
-      destruct (comp y z) eqn:Hyz; try congruence.
-      rewrite (comp_trans x y z); trivial. }
-    rewrite (none_occurs x (ltb x) t2 Hx H2').
-    destruct (occurs x t1); reflexivity.
-  - assert (Hxy' : comp y x = Lt).
-    { rewrite comp_opp, Hxy. reflexivity. }
-    assert (H1' : all (fun z => ltb z x) t1 = true).
-    { apply (all_weaken (fun z => ltb z y) (fun z => ltb z x)); trivial.
-      intros z.
-      unfold ltb.
-      destruct (comp z y) eqn:Hyz; try congruence.
-      rewrite (comp_trans z y x); trivial. }
-    rewrite (none_occurs x (fun z => ltb z x) t1); trivial.
 Qed.
 
 (** Now that we have shown our first interesting correctness property,
