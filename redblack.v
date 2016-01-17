@@ -622,13 +622,15 @@ Definition make_black t : tree :=
 Definition insert x t : tree :=
   make_black (insert_aux x t).
 
-(** One problem with our definitions of [balance_left] and
-    [balance_right] is that they are stated in terms of complicated
-    patterns. Internally, these functions are ellaborated in terms of
-    nested matches, which make them more complicated to reason about
-    directly with [destruct]. To remedy this, we show the following
-    lemmas, which allow us to consider the interesting cases directly:
-    *)
+(** FULL: The next lemmas are not strictly necessary, but they greatly
+    help us reasoning about the behavior of the balancing functions
+    above. Although they rely on a feature that we're not discussing
+    here in detail -- namely, _inductive propositions_ --, their use
+    is relatively simple, and is illustrated in the proof of the
+    [black_height_balance_left] lemma below. *)
+(** TERSE: The next lemmas help us reasoning about the balancing
+    functions. We won't discuss their definition in detail, but using
+    them is simple -- check the [black_height_balance_left] lemma below. *)
 
 Inductive balance_left_spec : color -> tree -> A -> tree -> tree -> Prop :=
 | BalanceLeftSpec1 :
@@ -672,12 +674,6 @@ Proof.
   destruct t2 as [|[] [|[]] ? [|[]]]; simpl; constructor.
 Qed.
 
-(** AAA: Rationalize this *)
-(** The following two lemmas show that the consistency of the black
-    heights of a tree is preserved after a balancing step. The
-    [case_balance_black_left] and [case_balance_black_right] lemmas
-    help us streamline the proofs. *)
-
 Lemma black_height_balance_left :
   forall c t1 x t2 n,
     black_height n (balance_left c t1 x t2)
@@ -693,11 +689,17 @@ Proof.
     reflexivity.
 Qed.
 
+(* EX2 (black_height_balance_right) *)
+
+(** Using the previous lemma as a template, complete the proof of
+    [black_height_balance_right] below. *)
+
 Lemma black_height_balance_right :
   forall c t1 x t2 n,
     black_height n (balance_right c t1 x t2)
     = black_height n (Node c t1 x t2).
 Proof.
+(* ADMITTED *)
   intros c t1 x t2 n.
   destruct (case_balance_right c t1 x t2)
     as [t1 x1 t2 x2 t3 x3 t4|t1 x1 t2 x2 t3 x3 t4|c t1 x t2]; simpl; trivial.
@@ -706,10 +708,13 @@ Proof.
   - destruct n as [|n]; trivial.
     rewrite Bool.andb_assoc, Bool.andb_assoc, Bool.andb_assoc. reflexivity.
 Qed.
+(* /ADMITTED *)
+
+(** [] *)
 
 (* EX3 (height_ok_insert_aux) *)
 
-(** Using the last two results, show that the black height invariant
+(** Use the last two results to show that the black height invariant
     is preserved by [insert_aux]. *)
 
 Lemma height_ok_insert_aux :
