@@ -1,6 +1,10 @@
 (* ###################################################################### *)
 (** * Arithmetic Proofs *)
 
+(** (We use [admit] and [Admitted] to hide solutions from exercises.) *)
+
+Axiom admit : forall {T}, T.
+
 Module Nat.
 
 Inductive nat : Type :=
@@ -29,12 +33,12 @@ Notation "x * y" := (mult x y) (at level 40, left associativity).
 (** Exercise: Define exponentiation *)
 
 Fixpoint exp (n m : nat) : nat :=
-(* SOLUTION *)
+(* ADMIT *)
   match m with
   | O => S O
   | S m' => m' * exp n m'
   end.
-(* /SOLUTION *)
+(* /ADMIT *)
 
 Notation "x ^ y" := (exp x y) (at level 30, right associativity).
 
@@ -144,8 +148,8 @@ Proof.
       rewrite (IH n). (* Note that we specify an argument to the hypothesis *)
       * reflexivity.
       * apply H.
-(* /ADMITTED *)
 Qed.
+(* /ADMITTED *)
 
 
 Definition pred (n : nat) :=
@@ -242,13 +246,13 @@ Qed.
 (* EX2 (factorial). *)
 (* The simplest version of factorial also fails. 
    Try to write a strictly decreasing factorial function. *)
-Fixpoint factorial (n : nat) :=
-(* SOLUTION *)
+Fixpoint factorial (n : nat) : nat :=
+(* ADMIT *)
   match n with
   | O => S O
   | S n => S n * factorial n
   end.
-(* /SOLUTION *)
+(* /ADMIT *)
     
 (** Well done! 
     We know that 2^n <= fact(n) <= n^n for all n>0. 
