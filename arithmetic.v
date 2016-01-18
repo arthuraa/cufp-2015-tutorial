@@ -38,8 +38,7 @@ Fixpoint exp (n m : nat) : nat :=
 
 Notation "x ^ y" := (exp x y) (at level 30, right associativity).
 
-(* If you run into errors with the notation, try changing the level or
-   associativity - or in the worst case, the symbol. *)
+(* Let's show that O is a left and right identity for addition. *)
 
 Lemma plus_0_l: forall n : nat, O + n = n.
 Proof.
@@ -106,7 +105,7 @@ Proof.
 Qed.  
 (* /ADMITTED *)
 
-(** Additional take-home exercises: Show that mult has an identity 
+(** Additional exercises: Show that mult has an identity 
     [S O], a annihilator [O] and associative, commutative and
     distributive properties. *)
 

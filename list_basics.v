@@ -721,15 +721,14 @@ End List.
     commutativity, associativity and distributivity of addition and
     multiplication.
 
-    You might start from the very beginning by defining the natural
-    numbers as follows:
+    As noted above, the natural numbers are defined as follows:
 
     Inductive nat : Type :=
       | O : nat
       | S : nat -> nat.
 
     From there you can define +, -, *, /, ^ etc. We encourage you to
-    start on your own, but to help, we've included a module on the
-    natural numbers. We hope you enjoy.
+    start on your own, but to help we've included a module on arithmetic
+    We hope you enjoy.
 
 *)
