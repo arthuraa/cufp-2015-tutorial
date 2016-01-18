@@ -82,7 +82,7 @@ Compute (xorb true true).
 (** [] *)
 
 
-(** What makes Coq different from normal functional programming
+(** FULL: What makes Coq different from normal functional programming
     languages is that it allows us to formally _prove_ that our
     programs satisfy certain properties. The system mechanically
     verifies these proofs to ensure that they are correct.
@@ -91,10 +91,9 @@ Compute (xorb true true).
     statements. Coq requires us to prove these statements using
     _tactics_, which are commands that manipulate formulas using basic
     logic rules. Here's an example showing some basic tactics in
-    action.
+    action. *)
 
-
-    New tactics
+(** New tactics
     -----------
 
     - [intros]: Introduce variables into the context, giving them
@@ -106,10 +105,13 @@ Compute (xorb true true).
 
 Example andb_false_l : forall b, andb false b = false.
 Proof.
+(* WORKINCLASS *)
   intros b. (* introduce the variable b *)
   simpl. (* simplify the expression *)
   reflexivity. (* solve for x = x *)
 Qed.
+(* /WORKINCLASS *)
+
 
 (* EX1 (orb_true_l) *)
 Theorem orb_true_l :
@@ -121,19 +123,18 @@ Qed.
 (* /ADMITTED *)
 (** [] *)
 
-(** Some proofs require case analysis. In Coq, this is done with the
-    [destruct] tactic.
+(** FULL: Some proofs require case analysis. In Coq, this is done with the
+    [destruct] tactic. *)
 
-
-    New tactics
-    -----------
+(** New tactic
+    ----------
 
     - [destruct]: Consider all possible constructors of an inductive
       data type, generating subgoals that need to be solved
-      separately.
+      separately. *)
 
 
-    Here's an example of [destruct] in action. *)
+(*  FULL: Here's an example of [destruct] in action. *)
 
 Lemma orb_true_r : forall b : bool, orb b true = true.
 (* Here we explicitly annotate b with its type, even though Coq could infer it. *)
@@ -203,7 +204,7 @@ Proof.
 Qed.
 (* /ADMITTED *)
 
-(** Sometimes, we want to show a result that requires hypotheses. In
+(** FULL: Sometimes, we want to show a result that requires hypotheses. In
     Coq, [P -> Q] means that [P] implies [Q], or that [Q] is true
     whenever [P] is. We can use [->] multiple times to express that
     more than one hypothesis are needed; the syntax is similar to how
@@ -221,16 +222,15 @@ Theorem rewrite_example : forall b1 b2 b3 b4,
 Proof.
 (* FULL *)
   intros b1 b2 b3 b4 eq14 eq23.
+
+(** Now, our context has two hypotheses: [eq14], which states
+    that [b1 = b4], and [eq23], stating that [b2 = b3]. 
+
+     Here are some tactics for using hypotheses and previously proved
+    results: *)
 (* /FULL *)
 
-(** FULL: Now, our context has two hypotheses: [eq14], which states
-    that [b1 = b4], and [eq23], stating that [b2 = b3]. *)
-
-(** Here are some tactics for using hypotheses and previously proved
-    results:
-
-
-    New tactics
+(** New tactics
     -----------
 
     - [rewrite]: Replace one side of an equation by the other.
@@ -251,7 +251,7 @@ Qed.
 
 
 (* EX1 (xorb_same) *)
-(** Show that if [b1 = b2] then [xorb b1 b2] is equal to [false]. *)
+(** Show that if [b1 = b2] then b1 xor b2 is false. *)
 
 Theorem xorb_same :
 (* ADMIT *)
@@ -259,8 +259,8 @@ Theorem xorb_same :
 (* /ADMIT *)
 Proof.
 (* ADMITTED *)
-  intros b1 b2 e.
-  rewrite e.
+  intros b1 b2 eq.
+  rewrite eq.
   destruct b2.
   + reflexivity.
   + reflexivity.
@@ -277,20 +277,20 @@ End Bool.
 
 Set Implicit Arguments.
 
-(** * Lists
+(** * Lists *)
 
-    We will now shift gears and study more interesting functional
+(** FULL: We will now shift gears and study more interesting functional
     programs; namely, programs that manipulate _lists_. *)
 
 Module List.
 
-(** Here's a polymorphic definition of a [list] type in Coq: *)
+(** FULL: Here's a polymorphic definition of a [list] type in Coq: *)
 
 Inductive list (T : Type) :=
 | nil : list T
 | cons : T -> list T -> list T.
 
-(** Here's how we define a function to append two lists.
+(** FULL: Here's how we define a function to append two lists.
     Note that we declare the type parameter T. *)
 
 Fixpoint app T (l1 l2 : list T) : list T :=
@@ -302,7 +302,7 @@ Fixpoint app T (l1 l2 : list T) : list T :=
 (* /FULL *)
 (* TERSE: WORK IN CLASS *)
 
-(** Coq comes with a syntax extension mechanism for defining custom
+(** FULL: Coq comes with a syntax extension mechanism for defining custom
     notations. Without getting into details, here's how we can give
     familiar syntax for lists. *)
 
@@ -314,17 +314,17 @@ Notation "l1 ++ l2" := (app l1 l2) (at level 60, right associativity).
 (** Since [nil] can potentially be of any type, we add an underscore
     to tell Coq to infer the type from the context. *)
 
-(** We can now check the types of expressions involving lists. *)
+(** FULL: We can now check the types of expressions involving lists. *)
 
 Check [].
 Check true :: [].
 Check [true ; false].
 Check [true ; false] ++ [false].
 
-(** And compute the last. *)
+(** FULL: And compute the last. *)
 Compute [true ; false] ++ [false].
 
-(** Note that we can use define notations and functions
+(** FULL: Note that we can use define notations and functions
     simultaneously: *)
 
 Reserved Notation "l1 @ l2" (at level 60).
@@ -348,7 +348,7 @@ Fixpoint snoc {T} (l : list T) (x : T) : list T :=
   end.
 (* /ADMIT *)
 
-(** It is easy to show that appending [nil] to the left of a list
+(** FULL: It is easy to show that appending [nil] to the left of a list
     yields the original list.  *)
 
 Lemma app_nil_l: forall T (l : list T), [] ++ l  = l.
@@ -360,7 +360,7 @@ Proof.
 Qed.
 (* /WORKINCLASS *)
 
-(** Showing the symmetric result is more difficult
+(** FULL: Showing the symmetric result is more difficult
     since it doesn't follow by simplification alone. *)
 
 Lemma app_nil_r: forall T (l : list T), l ++ []  = l.
@@ -399,7 +399,7 @@ Qed.
 (* /FULL *)
 (* TERSE: WORK IN CLASS *)
 
-(** As a rule of thumb, when proving some property of a recursive
+(** FULL: As a rule of thumb, when proving some property of a recursive
     function, it is a good idea to do induction on the recursive
     argument of the function. For instance, let's show that [app] is
     associative: *)
@@ -422,7 +422,7 @@ Proof.
 Qed.
 (* /WORKINCLASS *)
 
-(** Take-home exercise: Try to do induction on [l2] and [l3] in the
+(** FULL: Exercise: Try to do induction on [l2] and [l3] in the
     above proof, and see where it fails. *)
 
 (* EX2 (snoc_app) *)
@@ -464,7 +464,7 @@ Check S (S (S O)).
 Check 2 + 3.
 Compute 2 + 3.
 
-(** Now we can define the [length] function: *)
+(** FULL: Now we can define the [length] function: *)
 
 Fixpoint length T (l : list T) :=
 (* FULL *)
@@ -472,7 +472,7 @@ Fixpoint length T (l : list T) :=
   | [] => 0
   | h :: t => 1 + length t
   end.
-(* FULL *)
+(* /FULL *)
 (* TERSE: WORK IN CLASS *)
 
 Compute length [1; 1; 1].
@@ -490,24 +490,21 @@ Proof.
 Qed.
 (* /ADMITTED *)
 
-(** Often we find ourselves needing to reason about _contradictory_
+(** FULL: Often we find ourselves needing to reason about _contradictory_
     hypotheses. Whenever we have a hypothesis that equates two
     expressions that start with different constructors, we can use the
     [discriminate] tactic to prune that subgoal.
 
     This is a particular case of what is known as _the principle of
-    explosion_, which states that a contradiction implies anything.
+    explosion_, which states that a contradiction implies anything. *)
 
-
-    New Tactic
+(** New Tactic
     ----------
 
     - [discriminate]: Looks for an equation between terms starting
-      with different constructors, and solves the current goal.
+      with different constructors, and solves the current goal. *)
 
-    Let's try to prove that if [l1 ++ l2 = []] then [l1] is [[]]
-
- *)
+(* FULL: Let's try to prove that if [l1 ++ l2 = []] then [l1] is [[]] *)
 
 Lemma app_eq_nil_l : forall T (l1 l2 : list T),
   l1 ++ l2 = [] -> l1 = [].
@@ -558,7 +555,6 @@ Qed.
     hence the following definition fails.
 
 **)
-(** TERSE: Note that there are many functions that we cannot write in Coq... *)
 
 Fail Fixpoint shuffle T (l1 l2 : list T) :=
   match l1 with
@@ -573,21 +569,20 @@ Fail Fixpoint shuffle T (l1 l2 : list T) :=
 
     In this case, we can rewrite [shuffle] so that it is accepted by
     Coq's termination checker: *)
-(** TERSE: We can easily adapt this function to please Coq. *)
-Fixpoint shuffle T (l1 l2 : list T) :=
+
 (* FULL *)
+Fixpoint shuffle T (l1 l2 : list T) :=
   match l1, l2 with
-  | h1 :: t1, h2 :: t2 => h1 :: h2 :: shuffle t1 t2
   | [], _ => l2
   | _, [] => l1
+  | h1 :: t1, h2 :: t2 => h1 :: h2 :: shuffle t1 t2
   end.
 (* /FULL *)
-(* TERSE: WORK IN CLASS *)
 
 Print shuffle.
 
 
-(** Let's define list reversal function and prove some of its basic
+(** FULL: Let's define list reversal function and prove some of its basic
     properties. *)
 
 Fixpoint rev T (l : list T) :=
@@ -627,7 +622,7 @@ Proof.
 Qed.
 (* /ADMITTED *)
 
-(** Notice that the definition of list reversal given above runs in
+(** FULL: Notice that the definition of list reversal given above runs in
     quadratic time. Here is a tail-recursive equivalent that runs in
     linear time. *)
 
@@ -639,12 +634,12 @@ Fixpoint tr_rev_aux {T} (l acc : list T) : list T :=
 
 Definition tr_rev {T} (l: list T) := tr_rev_aux l [].
 
-(** Here, [acc] is an accumulator argument that holds the portion of
+(** FULL: Here, [acc] is an accumulator argument that holds the portion of
     the list that we have reversed so far. Let's prove that [tr_rev]
-    is equivalent to [rev]. For this we will need another tactic:
+    is equivalent to [rev]. For this we will need another tactic: *)
 
 
-    New Tactic
+(** New Tactic
     ----------
 
     - [unfold]: Calling [unfold foo] expands the definition of [foo]
