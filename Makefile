@@ -1,7 +1,9 @@
 COQSPLIT = ./coqsplit
 
 V = list_basics.full.v list_basics.short.v list_basics.sol.v \
-	redblack.full.v redblack.short.v redblack.sol.v
+	redblack.full.v redblack.short.v redblack.sol.v \
+	arithmetic.full.v arithmetic.short.v arithmetic.sol.v \
+
 
 all: $(V)
 
@@ -22,6 +24,16 @@ redblack.short.v: redblack.v coqsplit
 
 redblack.sol.v: redblack.v coqsplit
 	$(COQSPLIT) -solutions < $< > $@
+
+arithmetic.full.v: arithmetic.v coqsplit
+	$(COQSPLIT) < $< > $@
+
+arithmetic.short.v: arithmetic.v coqsplit
+	$(COQSPLIT) -terse < $< > $@
+
+arithmetic.sol.v: arithmetic.v coqsplit
+	$(COQSPLIT) -solutions < $< > $@
+
 
 coqsplit: coqsplit.ml
 	ocamlc.opt coqsplit.ml -o coqsplit
