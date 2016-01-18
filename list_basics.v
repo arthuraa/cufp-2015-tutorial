@@ -33,7 +33,7 @@ Inductive trivalue : Type :=
 .
 (** [] *)
 
-(** We can write functions that operate on [bool]s by simple pattern
+(** FULL: We can write functions that operate on [bool]s by simple pattern
     matching, using the [match] keyword. *)
 
 Definition negb (b:bool) : bool :=
@@ -42,7 +42,7 @@ Definition negb (b:bool) : bool :=
   | false => true
   end.
 
-(** We can pattern-match on multiple arguments simultaneously, and
+(** FULL: We can pattern-match on multiple arguments simultaneously, and
     also use "_" as a wildcard pattern. *)
 
 Definition orb (b1 b2: bool) : bool :=
