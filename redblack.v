@@ -115,7 +115,7 @@ Fixpoint member x t : bool :=
     | Gt => member x t2
     end
   end.
-(* FULL *)
+(* /FULL *)
 (* TERSE: WORK IN CLASS *)
 
 (* EX1 (member_ex) *)
