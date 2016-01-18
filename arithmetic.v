@@ -1,36 +1,13 @@
 (* ###################################################################### *)
-(** * Numbers and Induction
+(** * Arithmetic Proofs *)
 
-    Even numbers are not primitive! Luckily, inductive types are all
-    we need to define them. Once again, Coq's standard library comes
-    with its own numeric types, but we repeat the definition of
-    natural number here for illustration purposes.
-
-    Recall that a natural number is either zero or the successor of a
-    natural number. This leads to the following definition: *)
+Module Nat.
 
 Inductive nat : Type :=
 | O : nat
 | S : nat -> nat.
 
-(** Note that [bool] was a simple enumeration type with finitely many
-    elements, whereas this type has a recursive structure. This
-    definition says that [nat] is an algebraic data type with two
-    constructors, [O] and [S], the second of which has one argument of
-    type [nat].
-
-    We can use [Check] ([C-c C-a C-c] in Proof General) to ask Coq for
-    the type of an expression. *)
-
 Check (S (S O)).
-
-(** This expression represents the successor of the successor of zero (i.e., two).
-
-    We can define recursive functions with the [Fixpoint] keyword,
-    which corresponds to [let rec] declarations in OCaml. (Other
-    languages, such as Haskell, do not require special keywords to
-    introduce recursive definitions.) Here's how we can define
-    addition and multiplication for [nat]s. *)
 
 Fixpoint plus (n m : nat) : nat :=
   match n with
@@ -44,24 +21,25 @@ Fixpoint mult (n m : nat) : nat :=
   | S n' => plus m (mult n' m)
   end.
 
-(** Coq comes with a syntax extension mechanism for defining custom
-    notations. Without getting into details, here's how we can give
-    familiar syntax for the two functions above. *)
-
 Notation "x + y" := (plus x y) (at level 50, left associativity).
 
 Notation "x * y" := (mult x y) (at level 40, left associativity).
 
 
-(* 90 seconds *)
 (** Exercise: Define exponentiation *)
 
-(* Fill in function here *)
+Fixpoint exp (n m : nat) : nat :=
+(* SOLUTION *)
+  match m with
+  | O => S O
+  | S m' => m' * exp n m'
+  end.
+(* /SOLUTION *)
 
-(* Fill in notation here *)
+Notation "x ^ y" := (exp x y) (at level 30, right associativity).
 
-(** It is easy to show that [O] is the left additive identity, because
-    it follows directly from simplification: *)
+(* If you run into errors with the notation, try changing the level or
+   associativity - or in the worst case, the symbol. *)
 
 Lemma plus_0_l: forall n : nat, O + n = n.
 Proof.
@@ -70,45 +48,33 @@ Proof.
   reflexivity.
 Qed.
 
-(** Showing that [O] is the right additive identity is more difficult,
-    since it doesn't follow by simplification alone. *)
-
+(* EX1 (plus_O_r) *)
 Lemma plus_O_r: forall n : nat, n + O = n.
 Proof.
+(* ADMITTED *)
   intros n.
-  simpl. (* Does nothing *)
-  destruct n as [| n']. (* Notice the [as] clause, which allows us
-                           to name constructor arguments. *)
+  induction n.
+  + reflexivity.
   + simpl.
+    rewrite IHn.
     reflexivity.
-  + simpl. (* no way to proceed... *)
-
-(** The problem is that we can only prove the result for [S n'] if we
-    already know that it is valid for [n']. We need a bigger hammer here...
+Qed.
+(* /ADMITTED *)
 
 
-    New tactic
-    ----------
-
-    - [induction]: Argue by induction. It works as [destruct], but
-    additionally giving us an inductive hypothesis in the inductive
-    case. *)
-
-Restart.
-  intros n.
-  induction n as [| n' IH]. (* Note the additional name [IH], given to our
-                               inductive hypothesis *)
+(* EX1 (n_plus_S_m) *)
+Theorem n_plus_S_m: forall n m, n + S m = S (n + m). 
+Proof.
+(* ADMITTED *)
+  intros n m.
+  induction n as [| n' IH].
   + simpl.
     reflexivity.
   + simpl.
     rewrite IH.
     reflexivity.
 Qed.
-
-(** As a rule of thumb, when proving some property of a recursive
-    function, it is a good idea to do induction on the recursive
-    argument of the function. For instance, let's show that [plus] is
-    associative: *)
+(* /ADMITTED *)
 
 Theorem plus_assoc: forall m n o, m + (n + o) = (m + n) + o.
 Proof.
@@ -122,19 +88,27 @@ Proof.
     reflexivity.
 Qed.
 
-(** Take-home exericse: Try to do induction on [n] and [o] in the
-    above proof, and see where it fails. *)
+(* EX2 (plus_comm) *)
+(* Show that plus is commutative. *)
 
-(* 3 minutes *)
-(** Exercise: Show that [n + S m] is equal to [S (n + m)]. *)
+Theorem plus_comm: forall n m, n + m = m + n.
+Proof.
+(* ADMITTED *)
+  intros n m.
+  induction n as [|n' IH].
+  + simpl. 
+    rewrite plus_O_r.
+    reflexivity.
+  + simpl.
+    rewrite IH.
+    rewrite n_plus_S_m.
+    reflexivity.
+Qed.  
+(* /ADMITTED *)
 
-(** Exercise: Show that plus is commutative. *)
-(** Hint: Look at our earlier lemmas. *)
-
-(** Additional take-home exercises: Show that mult has an identity [S
-    O], a annihilator [O] and associative, commutative and
+(** Additional take-home exercises: Show that mult has an identity 
+    [S O], a annihilator [O] and associative, commutative and
     distributive properties. *)
-
 
 (** The next function tests whether a number [m] is equal to [n]. *)
 
@@ -153,54 +127,13 @@ Proof.
   - simpl. apply IH.
 Qed.
 
-(** The other direction requires us to reason about _contradictory_
-    hypotheses. Whenever we have a hypothesis that equates two
-    expressions that start with different constructors, we can use the
-    [discriminate] tactic to prune that subgoal.
-
-    This is a particular case of what is known as _the principle of
-    explosion_, which states that a contradiction implies anything.
-
-
-    New Tactic
-    ----------
-
-    - [discriminate]: Looks for an equation between terms starting
-      with different constructors, and solves the current goal.
-
-
-    We could try to proceed like this:
-
-*)
-
+(* EX2 (beq_nat_true). *)
+(* Show the reverse direction. Remember to ensure a sufficiently general 
+   induction hypothesis *)
 Lemma beq_nat_true :
   forall m n, beq_nat m n = true -> m = n.
 Proof.
-  intros m n.
-  induction m as [|m IH].
-  - destruct n as [|n].
-    + reflexivity.
-    + simpl. intros H. discriminate.
-  - destruct n as [|n].
-    + simpl. intros H. discriminate.
-    + simpl. intros H.
-      (* stuck... *)
-
-(** Unfortunately, we are stuck here: our induction hypothesis talks
-    about [S n], while we need it to talk about [n]! This happens
-    because [n] was introduced at the beginning of our proof, which
-    made our induction hypothesis too specific. We can fix this by
-    avoiding introducing [n], or simply by putting it back in the goal
-    before calling [induction], with the [revert] tactic.
-
-
-    New Tactic
-    ----------
-
-    - [revert]: The opposite of [intros]; removes variables and
-      hypotheses from the context, putting them back in the goal. *)
-
-Restart.
+(* ADMITTED *)
   intros m n. revert n.
   induction m as [|m IH].
   - intros n. destruct n as [|n].
@@ -212,39 +145,9 @@ Restart.
       rewrite (IH n). (* Note that we specify an argument to the hypothesis *)
       * reflexivity.
       * apply H.
+(* /ADMITTED *)
 Qed.
 
-(* 1 minute *)
-(** Exercise: Prove this statement. *)
-
-Lemma plus_eq_0 :
-  forall n m,
-    n + m = O -> n = O.
-Proof.
-  Admitted. (* fill in proof *)
-
-
-
-(** Coq, like many other proof assistants, requires functions to be
-    _total_ and defined for all possible inputs; in particular,
-    recursive functions are always required to terminate.
-
-    Since there is no general algorithm for deciding whether a
-    function is terminating or not, Coq needs to settle for an
-    incomplete class of recursive functions that is easy to show
-    terminating. This means that, although every recursive function
-    accepted by Coq is terminating, there are many recursive functions
-    that always terminate but are not accepted by Coq, because it
-    isn't "smart enough" to realize that they indeed terminate.
-
-    The criterion adopted by Coq for deciding whether to accept a
-    definition or not is _structural recursion_: All recursive calls
-    must be performed on _sub-terms_ of the original argument.
-
-    Note that the definition of _sub-terms_ used in context is purely syntactic
-    hence the following definition fails.
-
-**)
 
 Definition pred (n : nat) :=
   match n with
@@ -252,22 +155,105 @@ Definition pred (n : nat) :=
   | S n => n
   end.
 
-Fail Fixpoint factorial (n : nat) :=
-  if beq_nat n O then S O else n * factorial (pred n).
 
-(** The [Fail] keyword instructs Coq to ignore a command when it
-    fails, but to fail if the command succeeds. It is useful for
-    showing certain pieces of code that are not accepted by the
-    language.
+Fixpoint minus (m n : nat) : nat :=
+  match m, n with
+  | O, _ => m
+  | _, O => m
+  | S m', S n' => minus m' n'
+  end.
 
-    In this case, we can rewrite [factorial] so that it is accepted by Coq's
-    termination checker: *)
+Notation "x - y" := (minus x y) (at level 50, left associativity).
 
+(** The next function tests whether a number [m] is less than or equal
+    to [n]. *)
+
+Fixpoint ble_nat (m n : nat) : bool :=
+  match m, n with
+  | O, _ => true
+  | _, O => false
+  | S n', S m' => ble_nat n' m'
+  end.
+
+(* Exercises: Show that ble_nat is reflexive, transitive and antisymmetric. *)
+
+(** The simple definition of div fails due to Coq's termination checker, 
+    so we go with the more complicated one below. *)
+
+Fail Fixpoint div (m n: nat) : nat :=
+  match n with
+  | O => O
+  | S n' => if ble_nat n m then S (div (m - n) n) else O
+  end.
+
+Fixpoint div (m n: nat) : nat :=
+  match n with
+  | O => O
+  | S n' => match m with
+            | O => O
+            | S m' => S (div (S m' - S n') (S n'))
+            end
+  end.
+
+(** Here, Coq is able to figure out that [S m' - S n'] is a valid
+    recursive argument because [minus] only returns results that are
+    syntatic sub-terms of [m]. Unfortunately, this criterion is pretty
+    fragile: replacing [m] by [O] or [S m'] in the above definition of
+    [minus] causes this definition of [div] to break; try it!.
+
+    This kind of rewriting doesn't always work, alas. We can make Coq
+    accept less obvious recursive definitions by providing an
+    explicit, separate proof that they always terminate, or by
+    supplying an extra argument that gives an upper bound on how many
+    recursive calls can be performed. We won't cover this feature here
+    but you can find more about recursive definitions in Coq on the Internet. *)
+
+Notation "x / y" := (div x y) (at level 40, left associativity).
+
+
+(* EX2 (n_div_n) *)
+(* Show that n / n = 1, for all n > 0. 
+   You will need a lemma. *)
+
+(* SOLUTION *)
+Lemma n_minus_n : forall n, n - n = O.
+Proof.
+  intros n.
+  induction n as [|n IH].
+  + reflexivity.
+  + simpl.
+    apply IH.
+Qed.
+(* /SOLUTION *)
+    
+Lemma n_div_n: forall n, ble_nat (S O) n = true -> n / n = (S O).
+Proof.
+(* ADMITTED *)
+  intros n H.
+  induction n.
+  + simpl in H.
+    discriminate.
+  + simpl in *.
+    rewrite n_minus_n.
+    simpl.
+    reflexivity.
+Qed.    
+(* /ADMITTED *)
+
+(* EX2 (factorial). *)
+(* The simplest version of factorial also fails. 
+   Try to write a strictly decreasing factorial function. *)
 Fixpoint factorial (n : nat) :=
+(* SOLUTION *)
   match n with
   | O => S O
   | S n => S n * factorial n
   end.
+(* /SOLUTION *)
+    
+(** Well done! 
+    We know that 2^n <= fact(n) <= n^n for all n>0. 
+    For a challenge, try to prove both. *)
 
 End Nat.
 
@@ -280,3 +266,7 @@ End Nat.
 
 Compute (S (S O)).
 Compute (S (S O) + S O).
+
+(* Additionally nat has 'less than' and 'greater than' defined as Props in 
+   addition to bool, using the standard syntax [x < y]. Check out the Coq 
+   standard library for more. *)
