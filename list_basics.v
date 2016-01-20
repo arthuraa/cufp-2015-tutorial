@@ -340,7 +340,7 @@ Fixpoint app' T (l1 l2 : list T) : list T :=
 (* EX1 (snoc) *)
 (** Define [snoc], which adds an element to the end of a list. *)
 
-Fixpoint snoc {T} (l : list T) (x : T) : list T :=
+Fixpoint snoc T (l : list T) (x : T) : list T :=
 (* ADMIT *)
   match l with
   | [] => [x]
@@ -626,13 +626,13 @@ Qed.
     quadratic time. Here is a tail-recursive equivalent that runs in
     linear time. *)
 
-Fixpoint tr_rev_aux {T} (l acc : list T) : list T :=
+Fixpoint tr_rev_aux T (l acc : list T) : list T :=
   match l with
   | [] => acc
   | x :: l => tr_rev_aux l (x :: acc)
   end.
 
-Definition tr_rev {T} (l: list T) := tr_rev_aux l [].
+Definition tr_rev T (l: list T) := tr_rev_aux l [].
 
 (** FULL: Here, [acc] is an accumulator argument that holds the portion of
     the list that we have reversed so far. Let's prove that [tr_rev]
