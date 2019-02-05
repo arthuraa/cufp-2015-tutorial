@@ -422,7 +422,7 @@ let sanity_check s =
 
 let main () =
   let s = readchan stdin in
-  let s1 = apply_spec silent_spec s in
+  let s1 = apply_spec silent_spec (Bytes.to_string s) in
   let s2 =
     if exerciselist then
       (* If exerciselist is on, we will only parse the exercises *)
